@@ -1,0 +1,390 @@
+/* assets/estilos_customizados.css */ /* Refatorar nome do arquivo */
+
+/* ==========================================================================
+   1. Importação de Fontes e Definição de Variáveis Globais (Paleta)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Poppins:wght@500;600;700&display=swap');
+
+/* Variáveis globais para cores e estilos */
+:root {
+    /* Cores principais da marca */
+    --vermelho-rossmann: #E3001B;
+    --azul-escuro: #002346;
+    --cinza-neutro: #5E676F;
+    
+    /* Cores de fundo e destaque */
+    --fundo-cinza-claro: #F5F7FA;
+    --branco-neutro: #FFFFFF;
+    --verde-destaque: #27AE60;
+    --amarelo-destaque: #F2C94C;
+    --azul-destaque: #2D9CDB;
+
+    /* Estilos de componentes */
+    --fundo-cartao: var(--branco-neutro);
+    --sombra-leve: 0 4px 12px rgba(0, 35, 70, 0.06);
+    --sombra-media: 0 6px 16px rgba(0, 35, 70, 0.09);
+    --borda-raio-md: 0.75rem;
+    --borda-raio-sm: 0.5rem;
+}
+
+/* ==========================================================================
+   2. Estilos de Layout Base (Corpo, Barra Lateral, Área de Conteúdo)
+   ========================================================================== */
+
+/* Estilo base do corpo da página */
+body {
+    font-family: 'Roboto', sans-serif;
+    color: var(--cinza-neutro);
+    background-color: var(--fundo-cinza-claro);
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Área principal de conteúdo */
+.content-area {
+    margin-left: 18rem;
+    padding: 2rem;
+    min-height: 100vh;
+    transition: margin-left 0.3s ease;
+}
+
+.sidebar { /* Esta classe é refatorada em sidebar_styles.css, aqui usaremos o nome final */
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 18rem;
+    padding: 2rem 1.5rem;
+    background-color: var(--azul-escuro); /* Refatorar variável */
+    box-shadow: var(--sombra-media); /* Refatorar variável */
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+}
+
+.sidebar-header { /* Esta classe é refatorada em sidebar_styles.css, aqui usaremos o nome final */
+    text-align: center;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.sidebar .nav-link-custom { /* Esta classe é refatorada em shared_components.py e usada em sidebar_styles.css, manter o nome */
+    color: rgba(255, 255, 255, 0.7) !important;
+    padding: 0.85rem 1.25rem;
+    margin-bottom: 0.35rem;
+    border-radius: var(--borda-raio-sm); /* Refatorar variável */
+    transition: all 0.2s ease-in-out;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    font-size: 0.95rem;
+}
+.sidebar .nav-link-custom:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: var(--branco-neutro) !important; /* Refatorar variável */
+    transform: translateX(4px);
+}
+.sidebar .nav-link-custom.active {
+    background-color: var(--vermelho-rossmann) !important; /* Refatorar variável */
+    color: var(--branco-neutro) !important; /* Refatorar variável */
+    font-weight: 700;
+    box-shadow: 0 4px 10px rgba(227, 0, 27, 0.3);
+}
+
+.sidebar-hr { /* Esta classe é refatorada em shared_components.py, manter o nome */
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    margin: 1.5rem 0;
+}
+
+/* ==========================================================================
+    3. Estilos de Tipografia e Componentes de Conteúdo
+      ========================================================================== */
+
+.page-title { /* Refatorar para 'titulo-pagina' */
+    color: var(--azul-escuro); /* Refatorar variável */
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.section-subtitle { /* Refatorar para 'subtitulo-secao' */
+    color: var(--azul-escuro); /* Refatorar variável */
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 1.5rem;
+    margin-top: 3rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 3px solid var(--vermelho-rossmann); /* Refatorar variável */
+    padding-bottom: 0.75rem;
+}
+
+.custom-card { /* Refatorar para 'cartao-customizado' */
+    background-color: var(--fundo-cartao); /* Refatorar variável */
+    border: none;
+    border-radius: var(--borda-raio-md); /* Refatorar variável */
+    box-shadow: var(--sombra-media); /* Refatorar variável */
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    height: 100%;
+}
+.custom-card:hover { /* Refatorar para 'cartao-customizado:hover' */
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0, 35, 70, 0.1);
+}
+
+.card-body {
+    padding: 1.75rem;
+}
+
+/* Caixa de Análise */
+.analise-text-box { /* Refatorar para 'caixa-texto-analise' */
+    background-color: #F5F7FA;
+    border-left: 4px solid var(--azul-destaque); /* Refatorar variável */
+    padding: 1rem 1.25rem;
+    margin-top: 1.5rem;
+    border-radius: var(--borda-raio-sm); /* Refatorar variável */
+    font-size: 0.9rem;
+}
+.analise-text-box .fa-lightbulb { /* Refatorar para 'caixa-texto-analise .fa-lightbulb' */
+    color: var(--azul-destaque); /* Refatorar variável */
+}
+
+/* ==========================================================================
+    4. Estilos de KPIs
+    ========================================================================== */
+
+.kpi-card { /* Refatorar para 'cartao-kpi' */
+    text-align: left;
+    background-color: var(--fundo-cartao); /* Refatorar variável */
+    border: none;
+    border-radius: var(--borda-raio-md); /* Refatorar variável */
+    box-shadow: var(--sombra-leve); /* Refatorar variável */
+    padding: 1.25rem;
+    transition: all 0.2s ease;
+}
+.kpi-card:hover { /* Refatorar para 'cartao-kpi:hover' */
+    transform: translateY(-3px);
+    box-shadow: var(--sombra-media); /* Refatorar variável */
+}
+.kpi-header { /* Refatorar para 'cabecalho-kpi' */
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--cinza-neutro); /* Refatorar variável */
+    margin-bottom: 0.5rem;
+    background-color: transparent !important;
+    padding: 0 !important;
+    border-bottom: none !important;
+    text-align: left !important;
+}
+.kpi-value { /* Refatorar para 'valor-kpi' */
+    font-family: 'Poppins', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--azul-escuro) !important; /* Refatorar variável */
+    margin-bottom: 0 !important;
+}
+.kpi-label { /* Refatorar para 'rotulo-kpi' */
+    font-size: 0.8rem;
+    color: var(--cinza-neutro) !important; /* Refatorar variável */
+    margin-top: 0.1rem !important;
+}
+
+/* Variação para KPIs por tipo de loja */
+.kpi-header-storetype { /* Refatorar para 'cabecalho-kpi-tipo-loja' */
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    color: var(--azul-escuro); /* Refatorar variável */
+    background-color: transparent !important;
+    padding: 0 !important;
+    border-bottom: 1px solid #eee !important;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem !important;
+    text-align: center !important;
+}
+
+.kpi-value-storetype { /* Refatorar para 'valor-kpi-tipo-loja' */
+    font-family: 'Roboto', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--azul-escuro) !important; /* Refatorar variável */
+    margin-bottom: 0 !important;
+}
+
+/* ==========================================================================
+    5. Estilos para Controles de Formulário (Filtros)
+    ========================================================================== */
+
+.radio-input-custom { /* Manter, pois é Bootstrap/Dash-specific */
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.radio-item-custom { /* Manter, pois é Bootstrap/Dash-specific */
+    position: relative;
+    padding: .2rem 0 .2rem 1.75rem;
+    cursor: pointer;
+    line-height: 1.5;
+    transition: color 0.2s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    background-color: transparent !important;
+    border: none !important;
+    margin-right: 1.25rem;
+}
+
+.radio-item-custom:hover {
+    color: var(--azul-escuro); /* Refatorar variável */
+}
+
+.radio-item-custom::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border: 2px solid #adb5bd;
+    border-radius: 4px;
+    background-color: var(--branco-neutro); /* Refatorar variável */
+    transition: all 0.2s ease-in-out;
+}
+
+.radio-item-custom:hover::before {
+    border-color: var(--azul-destaque); /* Refatorar variável */
+}
+
+.radio-input-custom:checked + .radio-item-custom {
+    color: var(--azul-escuro); /* Refatorar variável */
+    font-weight: 500;
+}
+
+.radio-input-custom:checked + .radio-item-custom::before {
+    background-color: var(--azul-destaque); /* Refatorar variável */
+    border-color: var(--azul-destaque); /* Refatorar variável */
+}
+
+.radio-item-custom::after {
+    content: "";
+    position: absolute;
+    display: none;
+    left: 6px;
+    top: 50%;
+    width: 5px;
+    height: 10px;
+    border: solid var(--branco-neutro); /* Refatorar variável */
+    border-width: 0 2px 2px 0;
+    transform: translateY(-60%) rotate(45deg);
+}
+
+.radio-input-custom:checked + .radio-item-custom::after {
+    display: block;
+}
+
+.radio-group .form-check { /* Refatorar para 'grupo-radio .form-check' */
+    padding-left: 0;
+}
+
+.dash-dropdown .Select-control { /* Refatorar para 'dropdown-dash .Select-control' */
+    background-color: var(--branco-neutro) !important; /* Refatorar variável */
+    border-radius: var(--borda-raio-sm) !important; /* Refatorar variável */
+    border: 1px solid #dce1e6 !important;
+    box-shadow: none !important;
+}
+
+.dash-dropdown .Select-menu-outer { /* Refatorar para 'dropdown-dash .Select-menu-outer' */
+    border-radius: var(--borda-raio-sm) !important; /* Refatorar variável */
+    box-shadow: var(--sombra-leve) !important; /* Refatorar variável */
+}
+
+.date-picker-custom .DateInput_input { /* Manter, Dash-specific */
+    background-color: var(--branco-neutro) !important; /* Refatorar variável */
+    border-radius: var(--borda-raio-sm) !important; /* Refatorar variável */
+    border: 1px solid #dce1e6 !important;
+}
+
+/* ==========================================================================
+    6. Estilos para Tabelas e Outros Componentes
+      ========================================================================== */
+.table.table-custom { /* Refatorar para 'tabela.tabela-customizada' */
+    border-radius: var(--borda-raio-md); /* Refatorar variável */
+    overflow: hidden;
+    box-shadow: var(--sombra-leve); /* Refatorar variável */
+}
+.table.table-custom thead th { /* Refatorar para 'tabela.tabela-customizada thead th' */
+    background-color: var(--azul-escuro); /* Refatorar variável */
+    color: var(--branco-neutro); /* Refatorar variável */
+    font-weight: 600;
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--fundo-cinza-claro); /* Refatorar variável */
+    color: var(--azul-escuro); /* Refatorar variável */
+}
+
+.ranking-row { /* Refatorar para 'linha-ranking' */
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.ranking-row:hover { /* Refatorar para 'linha-ranking:hover' */
+    background-color: #e9ecef; /* Um cinza um pouco mais escuro que o normal no hover */
+}
+
+.ranking-row-selected, /* Refatorar para 'linha-ranking-selecionada' */
+.ranking-row-selected:hover { /* Refatorar para 'linha-ranking-selecionada:hover' */
+    background-color: #fff5f5 !important;  /* Vermelho claríssimo */
+    color: var(--vermelho-rossmann) !important; /* Refatorar variável */
+    font-weight: 600;
+    border-left: 6px solid var(--vermelho-rossmann); /* Refatorar variável */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    transform: translateX(2px);
+    transition: all 0.15s ease-in-out;
+}
+
+.info-icon { /* Refatorar para 'icone-info' */
+    color: var(--cinza-neutro); /* Refatorar variável */
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.alert-box { /* Refatorar para 'caixa-alerta' */
+    border-radius: var(--borda-raio-sm); /* Refatorar variável */
+    padding: 1.25rem;
+}
+
+.graph-card-col { /* Refatorar para 'coluna-cartao-grafico' */
+    margin-bottom: 2rem;
+}
+
+/* ==========================================================================
+    7. Estilos para Tabs de Gráficos (Visão de Loja)
+   ========================================================================== */
+.rossmann-tabs .nav-link { /* Refatorar para 'abas-rossmann .nav-link' */
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    color: var(--azul-escuro) !important; /* Refatorar variável */
+    border: 1px solid transparent;
+    border-radius: var(--borda-raio-sm) var(--borda-raio-sm) 0 0; /* Refatorar variável */
+    margin-right: 0.25rem;
+}
+
+.rossmann-tabs .nav-link:hover { /* Refatorar para 'abas-rossmann .nav-link:hover' */
+    color: var(--vermelho-rossmann) !important; /* Refatorar variável */
+}
+
+.rossmann-tabs .nav-link.active { /* Refatorar para 'abas-rossmann .nav-link.active' */
+    font-weight: 700;
+    color: var(--azul-escuro) !important; /* Refatorar variável */
+    background-color: var(--branco-neutro) !important; /* Refatorar variável */
+    border: 1px solid var(--cinza-neutro) !important; /* Refatorar variável */
+    border-bottom-color: var(--branco-neutro) !important; /* remove linha inferior quando ativo */ /* Refatorar variável */
+}

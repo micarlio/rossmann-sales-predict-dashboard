@@ -1,0 +1,6 @@
+include dashboard/assets/css/*.css
+include dashboard/assets/js/*.js
+include dashboard/assets/images/*.png
+include dashboard/requirements.txt
+include README.md
+include LICENSE 

@@ -1,0 +1,137 @@
+/* ==========================================================================
+   Estilos específicos da Barra Lateral
+   ========================================================================== */
+
+/* --- Configuração Geral da Barra Lateral --- */
+.sidebar { /* Refatorar para 'barra-lateral' */
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px; /* Largura da sidebar expandida */
+    padding: 1.5rem 1rem;
+    background-color: #2c3e50; /* Cor de fundo escura, ajuste se necessário */
+    color: white;
+    transition: width 0.3s ease-in-out;
+    z-index: 1050; /* Garante que a sidebar fique acima do conteúdo */
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* --- Cabeçalho da Barra Lateral --- */
+.sidebar-header { /* Refatorar para 'cabecalho-barra-lateral' */
+    text-align: center;
+    padding-bottom: 1rem;
+    transition: all 0.3s ease-in-out;
+}
+
+.sidebar.collapsed .sidebar-header { /* Refatorar para 'barra-lateral.colapsada .cabecalho-barra-lateral' */
+    padding-bottom: 0;
+    height: 65px; /* Altura do container do logo para alinhamento */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- Estado Colapsado --- */
+.sidebar.collapsed { /* Refatorar para 'barra-lateral.colapsada' */
+    width: 80px; /* Largura da sidebar colapsada */
+    padding: 1.5rem 0; /* Ajusta o padding lateral no modo colapsado */
+}
+
+/* Esconde o texto quando a sidebar está colapsada */
+.sidebar.collapsed .sidebar-text-content { /* Refatorar para 'barra-lateral.colapsada .conteudo-texto-barra-lateral' */
+    display: none;
+}
+
+/* Centraliza o ícone quando o texto está escondido */
+.sidebar.collapsed .nav-link-custom { /* Refatorar para 'barra-lateral.colapsada .nav-link-custom' */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    height: 50px; /* Altura consistente para alinhamento vertical */
+}
+
+/* Remove a margem do ícone que pode desalinhar (da classe me-2 do Bootstrap) */
+.sidebar.collapsed .nav-link-custom .me-2 { /* Refatorar para 'barra-lateral.colapsada .nav-link-custom .me-2' */
+    margin-right: 0 !important;
+}
+
+/* Estiliza o link ativo para ser um quadrado centrado */
+.sidebar.collapsed .nav-link-custom.active { /* Refatorar para 'barra-lateral.colapsada .nav-link-custom.active' */
+    width: 50px;
+    height: 50px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- Estilos do Logo --- */
+.sidebar-logo { /* Refatorar para 'logo-barra-lateral' */
+    width: 200px; /* Largura do logo no estado expandido */
+    transition: width 0.3s ease-in-out;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+}
+
+.sidebar.collapsed .sidebar-logo { /* Refatorar para 'barra-lateral.colapsada .logo-barra-lateral' */
+    width: 45px; /* Largura do logo no estado colapsado */
+    margin-bottom: 0 !important; /* Remove margem para não interferir com flexbox */
+}
+
+/* --- Botão de Toggle --- */
+.sidebar-toggle-wrapper { /* Refatorar para 'wrapper-alternar-barra-lateral' */
+    text-align: center;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #465a70; /* Linha sutil acima do botão */
+}
+
+/* Adicionado para centralizar o botão no modo colapsado */
+.sidebar.collapsed .sidebar-toggle-wrapper {
+    display: flex;
+    justify-content: center;
+    border-top: 1px solid #465a70;
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+
+.sidebar-toggle-button { /* Refatorar para 'botao-alternar-barra-lateral' */
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, transform 0.3s ease-in-out;
+}
+
+.sidebar-toggle-button:hover { /* Refatorar para 'botao-alternar-barra-lateral:hover' */
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.sidebar-toggle-button i { /* Refatorar para 'botao-alternar-barra-lateral i' */
+    transition: transform 0.3s ease-in-out;
+}
+
+/* --- Ajustes no Conteúdo Principal --- */
+.content { /* Refatorar para 'conteudo-principal' */
+    margin-left: 280px; /* Deve ser igual à largura da sidebar expandida */
+    padding: 2rem;
+    transition: margin-left 0.3s ease-in-out;
+}
+
+/* Ajusta a margem do conteúdo quando a sidebar está colapsada */
+.content.collapsed { /* Refatorar para 'conteudo-principal.colapsado' */
+    margin-left: 80px; /* Deve ser igual à largura da sidebar colapsada */
+}
