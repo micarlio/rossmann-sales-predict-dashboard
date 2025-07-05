@@ -7,6 +7,7 @@ from .callbacks_analise_3d import registrar_callbacks_analise_3d
 from .callbacks_analise_lojas import registrar_callbacks_analise_lojas
 from .callbacks_limpeza_dados import registrar_callbacks_limpeza_dados
 from .callbacks_dashboard_geral import registrar_callbacks_dashboard_geral
+from .callbacks_previsao_vendas import registrar_callbacks_previsao_vendas
 
 
 def registrar_callbacks(aplicativo, dados):
@@ -19,5 +20,7 @@ def registrar_callbacks(aplicativo, dados):
     registrar_callbacks_analise_lojas(aplicativo)
     # Callbacks para a página de Limpeza de Dados
     registrar_callbacks_limpeza_dados(aplicativo, dados)
+    # Callbacks para a página de Previsão de Vendas
+    registrar_callbacks_previsao_vendas(aplicativo, dados)
 
     # Nota: A página 'Limpeza de Dados' é estática em sua maioria, não precisando de callbacks aqui.

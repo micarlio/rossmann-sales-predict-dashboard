@@ -4,6 +4,7 @@ from pathlib import Path
 import os
 import logging
 import time
+import functools
 
 # Configuração do logging
 logging.basicConfig(
@@ -150,6 +151,7 @@ def carregar_dados_brutos():
         return None, None
 
 
+@functools.lru_cache(maxsize=2)
 def processar_dados_brutos(force_reprocess=False):
     """
     Processa os dados brutos, aplicando limpeza e transformações.

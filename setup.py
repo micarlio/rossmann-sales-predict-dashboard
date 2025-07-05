@@ -14,5 +14,7 @@ setup(
         "statsmodels==0.14.1",
         "scikit-learn==1.3.2",
         "gunicorn==21.2.0",
+        "xgboost>=1.7.0",
+        "lightgbm>=3.3.0",
     ],
 ) 
