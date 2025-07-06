@@ -25,24 +25,19 @@ def criar_layout_previsao_vendas(): # Refatorar nome da função
                         dbc.Col([
                             html.Div([
                                 dbc.Label("Métrica de Previsão", className="fw-bold mb-2"),
-                                dbc.Card(
-                                    dbc.CardBody([
-                                        dcc.RadioItems(
-                                            id='radio-metrica-previsao',
-                                            options=[
-                                                {'label': 'Vendas', 'value': 'Sales'},
-                                                {'label': 'Clientes', 'value': 'Customers'},
-                                                {'label': 'Ticket Médio', 'value': 'SalesPerCustomer'}
-                                            ],
-                                            value='Sales',
-                                            inline=True,
-                                            labelStyle={'margin-right': '20px'},
-                                            className="d-flex justify-content-around"
-                                        )
-                                    ]),
-                                    className="border-light mb-3"
+                                dbc.RadioItems(
+                                    id='radio-metrica-previsao',
+                                    options=[
+                                        {'label': 'Vendas', 'value': 'Sales'},
+                                        {'label': 'Clientes', 'value': 'Customers'},
+                                        {'label': 'Ticket Médio', 'value': 'SalesPerCustomer'}
+                                    ],
+                                    value='Sales',
+                                    className="btn-group",
+                                    inputClassName="btn-check",
+                                    labelClassName="btn btn-outline-primary",
                                 ),
-                                dbc.Label("Modelo de Previsão", className="fw-bold mb-2"),
+                                dbc.Label("Modelo de Previsão", className="fw-bold mb-2 mt-3"),
                                 dcc.Dropdown(
                                     id='dropdown-modelo-previsao',
                                     options=[
@@ -85,40 +80,28 @@ def criar_layout_previsao_vendas(): # Refatorar nome da função
                         # Coluna 2: Filtros de Lojas
                         dbc.Col([
                             html.Div([
-                                dbc.Label("Seleção de Loja(s)", className="fw-bold mb-2"),
-                                dcc.Dropdown(
-                                    id='dropdown-lojas-previsao',
-                                    options=[], 
-                                    multi=True,
-                                    placeholder='Selecione loja(s)',
-                                    className="mb-3"
-                                ),
-                                dbc.Label("Tipo de Loja", className="fw-bold mb-2"),
+                                dbc.Label("Tipo(s) de Loja", className="fw-bold mb-2"),
                                 dcc.Dropdown(
                                     id='dropdown-tipo-loja',
                                     options=[
-                                        {'label': 'Todos os tipos', 'value': 'todos'},
                                         {'label': 'Tipo A', 'value': 'a'},
                                         {'label': 'Tipo B', 'value': 'b'},
                                         {'label': 'Tipo C', 'value': 'c'},
                                         {'label': 'Tipo D', 'value': 'd'}
                                     ],
-                                    value='todos',
-                                    clearable=False,
-                                    className="mb-3"
+                                    value=['a', 'b', 'c', 'd'],
+                                    multi=True,
+                                    placeholder='Selecione tipos de loja',
+                                    className='dropdown-dash'
                                 ),
-                                dbc.Label("Assortimento", className="fw-bold mb-2"),
+                                dbc.Label("Loja(s) Específica(s)", className="fw-bold mb-2"),
                                 dcc.Dropdown(
-                                    id='dropdown-assortimento',
-                                    options=[
-                                        {'label': 'Todos', 'value': 'todos'},
-                                        {'label': 'Básico', 'value': 'basic'},
-                                        {'label': 'Extra', 'value': 'extra'},
-                                        {'label': 'Estendido', 'value': 'extended'}
-                                    ],
-                                    value='todos',
-                                    clearable=False,
-                                    className="mb-1"
+                                    id='dropdown-lojas-previsao',
+                                    options=[], 
+                                    multi=True,
+                                    value=[],
+                                    placeholder='Busque por uma ou mais lojas...',
+                                    className='dropdown-dash'
                                 )
                             ])
                         ], md=4),
@@ -142,29 +125,6 @@ def criar_layout_previsao_vendas(): # Refatorar nome da função
                                     value='todos',
                                     multi=True,
                                     placeholder='Selecione os dias da semana',
-                                    className="mb-3"
-                                ),
-                                dbc.Label("Período do Ano", className="fw-bold mb-2"),
-                                dcc.RangeSlider(
-                                    id='slider-periodo-ano',
-                                    min=1,
-                                    max=12,
-                                    step=1,
-                                    marks={
-                                        1: {'label': 'Jan', 'style': {'color': '#77b0b1'}},
-                                        2: {'label': 'Fev', 'style': {'color': '#77b0b1'}},
-                                        3: {'label': 'Mar', 'style': {'color': '#77b0b1'}},
-                                        4: {'label': 'Abr', 'style': {'color': '#77b0b1'}},
-                                        5: {'label': 'Mai', 'style': {'color': '#77b0b1'}},
-                                        6: {'label': 'Jun', 'style': {'color': '#77b0b1'}},
-                                        7: {'label': 'Jul', 'style': {'color': '#77b0b1'}},
-                                        8: {'label': 'Ago', 'style': {'color': '#77b0b1'}},
-                                        9: {'label': 'Set', 'style': {'color': '#77b0b1'}},
-                                        10: {'label': 'Out', 'style': {'color': '#77b0b1'}},
-                                        11: {'label': 'Nov', 'style': {'color': '#77b0b1'}},
-                                        12: {'label': 'Dez', 'style': {'color': '#77b0b1'}}
-                                    },
-                                    value=[1, 12],
                                     className="mb-3"
                                 ),
                                 dbc.Label("Status de Promoção", className="fw-bold mb-2"),

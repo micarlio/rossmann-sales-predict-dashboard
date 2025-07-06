@@ -157,6 +157,27 @@ body {
     4. Estilos de KPIs
     ========================================================================== */
 
+/* Estilos para os botões de rádio da métrica de previsão */
+#radio-metrica-previsao .btn-outline-primary {
+    color: var(--azul-escuro);
+    border-color: var(--azul-escuro);
+    background-color: white;
+    padding: 0.5rem 1rem;
+    margin-right: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+#radio-metrica-previsao .btn-outline-primary:hover {
+    background-color: rgba(0, 35, 70, 0.1);
+}
+
+#radio-metrica-previsao .btn-check:checked + .btn-outline-primary {
+    color: white;
+    background-color: var(--azul-escuro);
+    border-color: var(--azul-escuro);
+    box-shadow: 0 2px 5px rgba(0, 35, 70, 0.3);
+}
+
 .kpi-card { /* Refatorar para 'cartao-kpi' */
     text-align: left;
     background-color: var(--fundo-cartao); /* Refatorar variável */

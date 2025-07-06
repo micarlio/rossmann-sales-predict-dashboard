@@ -72,33 +72,22 @@ def gerar_forecast_prophet(df_ts_json, freq):
     return forecast[['ds', 'yhat', 'yhat_upper', 'yhat_lower']].to_json(date_format='iso', orient='split')
 
 
-def filtrar_dados(df, lojas, tipo_loja, promocao, assortimento, periodo_ano, dias_semana):
-    """
-    Função centralizada para aplicar todos os filtros de dados.
-    """
+def filtrar_dados(df, lojas, tipos_loja, promocao, dias_semana):
+    """Aplica filtros de loja, tipo de loja, promoção e dias da semana."""
     df_filtrado = df.copy()
-
-    if not lojas:
-        return pd.DataFrame() # Retorna dataframe vazio se nenhuma loja for selecionada
-
-    # Aplica a cadeia de filtros
-    df_filtrado = df_filtrado[df_filtrado['Store'].isin(lojas)]
-    
-    if tipo_loja != 'todos':
-        df_filtrado = df_filtrado[df_filtrado['StoreType'] == tipo_loja]
-    
+    # Prioriza seleção específica de lojas; se vazio, usa filtro de tipos
+    if lojas:
+        df_filtrado = df_filtrado[df_filtrado['Store'].isin(lojas)]
+    elif tipos_loja:
+        df_filtrado = df_filtrado[df_filtrado['StoreType'].isin(tipos_loja)]
+    else:
+        return pd.DataFrame()  # Sem filtros de loja selecionados
+    # Filtro de promoção
     if promocao != 'todos':
         df_filtrado = df_filtrado[df_filtrado['Promo'] == promocao]
-    
-    if assortimento != 'todos':
-        df_filtrado = df_filtrado[df_filtrado['Assortment'] == assortimento]
-    
-    meses_selecionados = list(range(periodo_ano[0], periodo_ano[1] + 1))
-    df_filtrado = df_filtrado[df_filtrado['Month'].isin(meses_selecionados)]
-    
+    # Filtro de dias da semana
     if dias_semana and 'todos' not in dias_semana:
         df_filtrado = df_filtrado[df_filtrado['DayOfWeek'].isin(dias_semana)]
-        
     return df_filtrado
 
 
@@ -109,14 +98,22 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
     # Callback para popular dropdown de lojas
     @aplicativo.callback(
         Output('dropdown-lojas-previsao', 'options'),
-        Input('armazenamento-df-principal', 'data')
+        Output('dropdown-lojas-previsao', 'value'),
+        Input('armazenamento-df-principal', 'data'),
+        Input('dropdown-tipo-loja', 'value')
     )
-    def popula_lojas(store_data):
+    def popula_lojas(store_data, tipos_loja):
+        """Popula opções de lojas com base nos tipos selecionados e inicia sem seleção."""
         df = deserializar_df(store_data)
         if df is None or 'Store' not in df.columns:
-            return []
+            return [], []
+        if tipos_loja:
+            df = df[df['StoreType'].isin(tipos_loja)]
+        else:
+            return [], []
         lojas = sorted(df['Store'].unique())
-        return [{'label': f"Loja {loja}", 'value': loja} for loja in lojas]
+        options = [{'label': f"Loja {loja}", 'value': loja} for loja in lojas]
+        return options, []
 
     # Callback para tornar "Todos os dias" mutuamente exclusivo
     @aplicativo.callback(
@@ -171,46 +168,39 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
         Output('grafico-previsao', 'figure'),
         Output('tabela-previsao', 'children'),
         [
-            # Todos os filtros da interface são Inputs
-        Input('radio-metrica-previsao', 'value'),
-        Input('slider-horizonte-previsao', 'value'),
-        Input('dropdown-granularidade-previsao', 'value'),
+            Input('radio-metrica-previsao', 'value'),
+            Input('slider-horizonte-previsao', 'value'),
+            Input('dropdown-granularidade-previsao', 'value'),
             Input('dropdown-modelo-previsao', 'value'),
-        Input('dropdown-lojas-previsao', 'value'),
-        Input('dropdown-tipo-loja', 'value'),
-        Input('dropdown-promocao', 'value'),
-        Input('dropdown-assortimento', 'value'),
-        Input('slider-periodo-ano', 'value'),
-        Input('checklist-dias-semana', 'value'),
-            # O armazenamento de dados também é um Input para reagir à sua atualização
-            Input('armazenamento-df-principal', 'data'),
+            Input('dropdown-tipo-loja', 'value'),
+            Input('dropdown-lojas-previsao', 'value'),
+            Input('dropdown-promocao', 'value'),
+            Input('checklist-dias-semana', 'value'),
+            Input('armazenamento-df-principal', 'data')
         ],
         [
-            # Parâmetros dos modelos são States, pois não devem disparar o callback sozinhos
             State('arima-p','value'), State('arima-d','value'), State('arima-q','value'),
             State('xgb-estimators','value'), State('xgb-lr','value'), State('lgbm-estimators','value'),
         ]
     )
-    def gerar_previsao(target, horizonte, granularidade, modelo, 
-                       lojas, tipo_loja, promocao, assortimento, periodo_ano, dias_semana,
-                       store_data,
+    def gerar_previsao(target, horizonte, granularidade, modelo,
+                       tipo_loja, lojas, promocao, dias_semana, store_data,
                        p, d, q, xgb_estimators, xgb_lr, lgbm_estimators):
-        
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"Callback de previsão iniciado. Modelo: {modelo}, Lojas: {lojas}")
+        logger.info(f"Callback de previsão iniciado. Modelo: {modelo}, Tipos: {tipo_loja}, Lojas: {lojas}")
         
         df = deserializar_df(store_data)
         if df is None:
             logger.warning("DataFrame é None após deserialização")
             return criar_figura_vazia("Carregando dados..."), []
         
-        # Uma verificação inicial para não mostrar nada se nenhuma loja for selecionada
-        if not lojas:
-            logger.warning("Nenhuma loja selecionada")
-            return criar_figura_vazia("Selecione uma ou mais lojas para começar"), []
+        # Uma verificação inicial para não mostrar nada se nenhum filtro de loja estiver definido
+        if not lojas and not tipo_loja:
+            logger.warning("Nenhum filtro de loja selecionado")
+            return criar_figura_vazia("Selecione um tipo de loja ou loja específica"), []
 
-        df_filtrado = filtrar_dados(df, lojas, tipo_loja, promocao, assortimento, periodo_ano, dias_semana)
+        df_filtrado = filtrar_dados(df, lojas, tipo_loja, promocao, dias_semana)
         
         if df_filtrado.empty:
             logger.warning("DataFrame filtrado está vazio")
@@ -254,7 +244,7 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
                 else:
                     ts = df_agrupado.resample(freq).sum(numeric_only=True)[[col]].reset_index()
             else:  # mensal
-                freq = 'M'
+                freq = 'MS' # Alterado de 'M' para 'MS' (Month Start)
                 if target == 'SalesPerCustomer':
                     ts = df_agrupado.resample(freq).mean(numeric_only=True)[[col]].reset_index()
                 else:
@@ -268,17 +258,23 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
                 return criar_figura_vazia(f"Dados insuficientes para o modelo {modelo}"), []
                 
             logger.info(f"Série temporal preparada com sucesso: {len(ts)} pontos")
+            
+            # Geração do DataFrame futuro movida e corrigida
+            last_date = ts['ds'].max()
+            if freq == 'D':
+                offset = pd.DateOffset(days=1)
+            elif freq == 'W':
+                offset = pd.DateOffset(weeks=1)
+            else: # MS
+                offset = pd.DateOffset(months=1)
+            
+            future_dates = pd.date_range(start=last_date + offset, periods=horizonte, freq=freq)
+            df_future = pd.DataFrame({'ds': future_dates})
+
         except Exception as e:
             logger.error(f"Erro ao preparar série temporal: {str(e)}")
             return criar_figura_vazia(f"Erro ao preparar dados: {str(e)}"), []
         
-        # O dataframe 'ts' agora contém todo o histórico filtrado, que será plotado.
-        # A amostragem de 'ts_hist' foi removida.
-
-        # Dataframe para o futuro
-        future_dates = pd.date_range(start=ts['ds'].max() + pd.to_timedelta(1, unit=freq), periods=horizonte, freq=freq)
-        df_future = pd.DataFrame({'ds': future_dates})
-
         # --- LÓGICA DE MODELAGEM ---
         forecast = None
         model_name_display = ""
@@ -391,8 +387,14 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
         # --- MONTAGEM DO GRÁFICO E TABELA ---
         try:
             fig = go.Figure()
-            # Histórico - agora usando o dataframe 'ts' completo
-            fig.add_trace(go.Scatter(x=ts['ds'], y=ts['y'], name='Histórico', mode='lines', line=dict(color='#1f77b4')))
+
+            # Filtra o histórico para mostrar apenas os últimos 2 meses antes da previsão
+            data_inicio_historico = forecast['ds'].min() - pd.DateOffset(months=2)
+            ts_display = ts[ts['ds'] >= data_inicio_historico]
+            
+            # Histórico - agora usando o dataframe 'ts_display' filtrado
+            fig.add_trace(go.Scatter(x=ts_display['ds'], y=ts_display['y'], name='Histórico (2 Meses)', mode='lines', line=dict(color='#1f77b4')))
+            
             # Previsão
             fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'], name='Previsão', mode='lines', line=dict(color='#ff7f0e')))
             # Intervalo de Confiança (se disponível)
@@ -430,18 +432,14 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
     @aplicativo.callback(
         Output('informacoes-previsao', 'children'),
         [
-            # Inputs de filtros
+            Input('dropdown-tipo-loja', 'value'),
             Input('dropdown-lojas-previsao', 'value'),
-        Input('dropdown-tipo-loja', 'value'),
-        Input('dropdown-promocao', 'value'),
-        Input('dropdown-assortimento', 'value'),
-        Input('slider-periodo-ano', 'value'),
-        Input('checklist-dias-semana', 'value'),
-            # O armazenamento de dados também é um Input
+            Input('dropdown-promocao', 'value'),
+            Input('checklist-dias-semana', 'value'),
             Input('armazenamento-df-principal', 'data')
         ]
     )
-    def atualizar_informacoes_previsao(lojas, tipo_loja, promocao, assortimento, periodo_ano, dias_semana, store_data):
+    def atualizar_informacoes_previsao(tipo_loja, lojas, promocao, dias_semana, store_data):
         import logging
         logger = logging.getLogger(__name__)
         logger.info("Atualizando informações de previsão")
@@ -453,7 +451,7 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
                 return [html.Div("Carregando dados...")]
 
             # Usa a função de filtro centralizada
-            df_filtrado = filtrar_dados(df, lojas, tipo_loja, promocao, assortimento, periodo_ano, dias_semana)
+            df_filtrado = filtrar_dados(df, lojas, tipo_loja, promocao, dias_semana)
             
             if df_filtrado.empty: 
                 logger.warning("DataFrame filtrado está vazio")
@@ -483,19 +481,15 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
     @aplicativo.callback(
         Output('otimizacao-estoque-conteudo', 'children'),
         [
-            # Inputs de filtros
-            Input('dropdown-lojas-previsao', 'value'),
             Input('dropdown-tipo-loja', 'value'),
+            Input('dropdown-lojas-previsao', 'value'),
             Input('dropdown-promocao', 'value'),
-            Input('dropdown-assortimento', 'value'),
-            Input('slider-periodo-ano', 'value'),
             Input('checklist-dias-semana', 'value'),
-            # O armazenamento de dados também é um Input
             Input('armazenamento-df-principal', 'data')
         ],
         prevent_initial_call=True
     )
-    def atualizar_otimizacao_estoque(lojas, tipo_loja, promocao, assortimento, periodo_ano, dias_semana, store_data):
+    def atualizar_otimizacao_estoque(tipo_loja, lojas, promocao, dias_semana, store_data):
         import logging
         logger = logging.getLogger(__name__)
         logger.info("Atualizando otimização de estoque")
@@ -507,7 +501,7 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
                 return html.P("Carregando dados...")
 
             # Usa a função de filtro centralizada
-            df_filtrado = filtrar_dados(df, lojas, tipo_loja, promocao, assortimento, periodo_ano, dias_semana)
+            df_filtrado = filtrar_dados(df, lojas, tipo_loja, promocao, dias_semana)
             
             if df_filtrado.empty:
                 logger.warning("DataFrame filtrado está vazio")
@@ -550,19 +544,17 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
         Output('roi-marketing-output','children'),
         Input('btn-simular-campanha','n_clicks'),
         [
-            State('dropdown-lojas-previsao', 'value'),
             State('dropdown-tipo-loja', 'value'),
+            State('dropdown-lojas-previsao', 'value'),
             State('dropdown-promocao', 'value'),
-            State('dropdown-assortimento', 'value'),
-            State('slider-periodo-ano', 'value'),
             State('checklist-dias-semana', 'value'),
-        State('input-custo-campanha','value'),
-        State('input-periodo-campanha','value'),
+            State('input-custo-campanha','value'),
+            State('input-periodo-campanha','value'),
             State('armazenamento-df-principal','data')
         ],
         prevent_initial_call=True
     )
-    def simular_roi_marketing(n_clicks, lojas, tipo_loja, promocao, assortimento, periodo_ano, dias_semana, custo, periodo, store_data):
+    def simular_roi_marketing(n_clicks, tipo_loja, lojas, promocao, dias_semana, custo, periodo, store_data):
         import logging
         logger = logging.getLogger(__name__)
         
@@ -578,7 +570,7 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
                 return dbc.Alert("Dados não carregados.", color="warning")
 
             # Usa a função de filtro centralizada
-            df_filtrado = filtrar_dados(df, lojas, tipo_loja, promocao, assortimento, periodo_ano, dias_semana)
+            df_filtrado = filtrar_dados(df, lojas, tipo_loja, promocao, dias_semana)
             
             if df_filtrado.empty:
                 logger.warning("DataFrame filtrado está vazio")
@@ -630,18 +622,16 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
         Output('grafico-elasticidade-receita','figure'),
         Input('btn-simular-preco','n_clicks'),
         [
-            State('dropdown-lojas-previsao', 'value'),
             State('dropdown-tipo-loja', 'value'),
+            State('dropdown-lojas-previsao', 'value'),
             State('dropdown-promocao', 'value'),
-            State('dropdown-assortimento', 'value'),
-            State('slider-periodo-ano', 'value'),
             State('checklist-dias-semana', 'value'),
-        State('input-alteracao-preco','value'),
+            State('input-alteracao-preco','value'),
             State('armazenamento-df-principal','data')
         ],
         prevent_initial_call=True
     )
-    def simular_elasticidade(n_clicks, lojas, tipo_loja, promocao, assortimento, periodo_ano, dias_semana, pct_change, store_data):
+    def simular_elasticidade(n_clicks, tipo_loja, lojas, promocao, dias_semana, pct_change, store_data):
         import logging
         logger = logging.getLogger(__name__)
         
@@ -657,7 +647,7 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
                 return criar_figura_vazia("Carregando dados..."), criar_figura_vazia("")
             
             # Usa a função de filtro centralizada
-            df_filtrado = filtrar_dados(df, lojas, tipo_loja, promocao, assortimento, periodo_ano, dias_semana)
+            df_filtrado = filtrar_dados(df, lojas, tipo_loja, promocao, dias_semana)
             
             if df_filtrado.empty:
                 logger.warning("DataFrame filtrado está vazio")
