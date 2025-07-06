@@ -276,6 +276,13 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
             return criar_figura_vazia(f"Erro ao preparar dados: {str(e)}"), []
         
         # --- LÓGICA DE MODELAGEM ---
+        # Construção de DataFrame de feriados para Prophet (conforme notebook)
+        state_hols = df_filtrado[df_filtrado['StateHoliday'].astype(str) != '0'][['Date']].drop_duplicates().rename(columns={'Date':'ds'})
+        state_hols['holiday'] = 'state_holiday'
+        school_hols = df_filtrado[df_filtrado['SchoolHoliday'] == 1][['Date']].drop_duplicates().rename(columns={'Date':'ds'})
+        school_hols['holiday'] = 'school_holiday'
+        holidays = pd.concat([state_hols, school_hols])
+
         forecast = None
         model_name_display = ""
 
@@ -284,7 +291,7 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
             if modelo == 'prophet':
                 model_name_display = "Prophet"
                 logger.info("Iniciando modelagem com Prophet")
-                m = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False)
+                m = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False, holidays=holidays)
                 m.fit(ts)
                 forecast = m.predict(df_future)
                 forecast = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
@@ -344,8 +351,7 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
             elif modelo == 'ensemble':
                 model_name_display = "Ensemble (Prophet + LGBM)"
                 logger.info("Iniciando modelagem com Ensemble")
-                # Prophet
-                m_prophet = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False).fit(ts)
+                m_prophet = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False, holidays=holidays).fit(ts)
                 forecast_prophet = m_prophet.predict(df_future)
                 
                 # LightGBM
@@ -431,52 +437,68 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
 
     @aplicativo.callback(
         Output('informacoes-previsao', 'children'),
-        [
-            Input('dropdown-tipo-loja', 'value'),
-            Input('dropdown-lojas-previsao', 'value'),
-            Input('dropdown-promocao', 'value'),
-            Input('checklist-dias-semana', 'value'),
-            Input('armazenamento-df-principal', 'data')
-        ]
+        Input('grafico-previsao', 'figure')
     )
-    def atualizar_informacoes_previsao(tipo_loja, lojas, promocao, dias_semana, store_data):
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info("Atualizando informações de previsão")
-        
+    def atualizar_informacoes_previsao(fig):
+        import pandas as pd
+        import numpy as np
+        if not fig or 'data' not in fig:
+            return [html.Div("Sem dados de previsão para exibir.")]
         try:
-            df = deserializar_df(store_data)
-            if df is None: 
-                logger.warning("DataFrame é None após deserialização")
-                return [html.Div("Carregando dados...")]
-
-            # Usa a função de filtro centralizada
-            df_filtrado = filtrar_dados(df, lojas, tipo_loja, promocao, dias_semana)
-            
-            if df_filtrado.empty: 
-                logger.warning("DataFrame filtrado está vazio")
-                return [html.Div("Sem dados para os filtros selecionados")]
-
-            # Verificar se as colunas necessárias existem
-            colunas_necessarias = ['Sales', 'Customers']
-            for col in colunas_necessarias:
-                if col not in df_filtrado.columns:
-                    logger.error(f"Coluna {col} não encontrada no DataFrame")
-                    return [html.Div(f"Erro: Coluna {col} não encontrada nos dados")]
-
-            total_vendas = df_filtrado['Sales'].sum()
-            total_clientes = df_filtrado['Customers'].sum()
-            ticket_medio = total_vendas / total_clientes if total_clientes > 0 else 0
-            
-            logger.info(f"Informações calculadas: Vendas={total_vendas}, Clientes={total_clientes}, Ticket={ticket_medio}")
-            return [dbc.Row([
-                dbc.Col(html.Div(f"Vendas Históricas (Filtro): R$ {total_vendas:,.2f}"), width=4),
-                dbc.Col(html.Div(f"Clientes (Filtro): {total_clientes:,.0f}"), width=4),
-                dbc.Col(html.Div(f"Ticket Médio (Filtro): R$ {ticket_medio:,.2f}"), width=4),
-            ])]
+            hist_y = np.array(fig['data'][0]['y'], dtype=float)
+            fc = fig['data'][1]
+            fc_dates = pd.to_datetime(fc['x'])
+            fc_y = np.array(fc['y'], dtype=float)
+            # Cálculos principais
+            total_prev = fc_y.sum()
+            media_prev = fc_y.mean()
+            media_hist = hist_y.mean() if hist_y.size > 0 else np.nan
+            var_perc = (media_prev / media_hist - 1) * 100 if media_hist else 0
+            idx_max = int(np.nanargmax(fc_y))
+            idx_min = int(np.nanargmin(fc_y))
+            pico_date = fc_dates[idx_max].strftime('%d/%m/%Y')
+            pico_val = fc_y[idx_max]
+            vale_date = fc_dates[idx_min].strftime('%d/%m/%Y')
+            vale_val = fc_y[idx_min]
+            # Intervalo de confiança
+            if len(fig['data']) >= 4:
+                lower = np.array(fig['data'][2]['y'], dtype=float)
+                upper = np.array(fig['data'][3]['y'], dtype=float)
+                amp_ic = np.mean(upper - lower)
+            else:
+                amp_ic = np.nan
+            # Variação acumulada e desvio padrão
+            var_acum = (fc_y[-1] / fc_y[0] - 1) * 100 if fc_y[0] else 0
+            std_val = np.std(fc_y)
+            # Maior ganho percentual dia-a-dia
+            pct_diff = (np.diff(fc_y) / fc_y[:-1] * 100) if fc_y.size > 1 else np.array([0])
+            max_gain = pct_diff.max()
+            # Dia da semana com maior previsão
+            df_fc = pd.DataFrame({'ds': fc_dates, 'y': fc_y})
+            df_fc['weekday'] = df_fc['ds'].dt.weekday
+            dias_media = df_fc.groupby('weekday')['y'].mean()
+            mapping = {0: 'Segunda-feira', 1: 'Terça-feira', 2: 'Quarta-feira', 3: 'Quinta-feira', 4: 'Sexta-feira', 5: 'Sábado', 6: 'Domingo'}
+            top_weekday = mapping.get(int(dias_media.idxmax()), '') if not dias_media.empty else ''
+            # Dias com promoção prevista (lista de datas)
+            promo_dates = fc_dates.strftime('%d/%m/%Y')
+            # Montar miniblocos (3 por linha, 12 KPIs)
+            items = [
+                dbc.Col(html.Div([html.P("Total Previsto", className="text-muted"), html.H5(f"€ {total_prev:,.2f}", className="fw-bold")]), md=4),
+                dbc.Col(html.Div([html.P("Média Prevista", className="text-muted"), html.H5(f"€ {media_prev:,.2f}", className="fw-bold")]), md=4),
+                dbc.Col(html.Div([html.P("Variação vs. Hist. (%)", className="text-muted"), html.H5(f"{var_perc:,.2f}%", className=("fw-bold text-success" if var_perc>=0 else "fw-bold text-danger"))]), md=4),
+                dbc.Col(html.Div([html.P(f"Pico ({pico_date})", className="text-muted"), html.H5(f"€ {pico_val:,.2f}", className="fw-bold")]), md=4),
+                dbc.Col(html.Div([html.P(f"Vale ({vale_date})", className="text-muted"), html.H5(f"€ {vale_val:,.2f}", className="fw-bold")]), md=4),
+                dbc.Col(html.Div([html.P("Ampl. IC Média", className="text-muted"), html.H5(f"€ {amp_ic:,.2f}", className="fw-bold")]), md=4),
+                dbc.Col(html.Div([html.P("Variação Acumulada (%)", className="text-muted"), html.H5(f"{var_acum:,.2f}%", className=("fw-bold text-success" if var_acum>=0 else "fw-bold text-danger"))]), md=4),
+                dbc.Col(html.Div([html.P("Períodos Previstos", className="text-muted"), html.H5(len(fc_y), className="fw-bold")]), md=4),
+                dbc.Col(html.Div([html.P("Dias com Promoção Prevista", className="text-muted"), html.Div(html.Ul([html.Li(d) for d in promo_dates]), style={'maxHeight':'8rem','overflowY':'auto'})]), md=4),
+                dbc.Col(html.Div([html.P("Maior Ganho (%)", className="text-muted"), html.H5(f"{max_gain:,.2f}%", className=("fw-bold text-success" if max_gain>=0 else "fw-bold text-danger"))]), md=4),
+                dbc.Col(html.Div([html.P("Dia da Semana Top", className="text-muted"), html.H5(top_weekday, className="fw-bold")]), md=4),
+                dbc.Col(html.Div([html.P("Desvio Padrão da Previsão", className="text-muted"), html.H5(f"€ {std_val:,.2f}", className="fw-bold")]), md=4),
+            ]
+            return [dbc.Row(items)]
         except Exception as e:
-            logger.error(f"Erro ao atualizar informações de previsão: {str(e)}")
-            return [html.Div(f"Erro ao calcular informações: {str(e)}")]
+            return [html.Div(f"Erro ao gerar informações: {e}")]
     
     @aplicativo.callback(
         Output('otimizacao-estoque-conteudo', 'children'),

@@ -14,7 +14,7 @@ def criar_layout_previsao_vendas(): # Refatorar nome da função
                     dbc.Col(criar_botoes_cabecalho(nome_pagina), md=4, className="d-flex justify-content-end"), # Usar nova função e variável refatorada
                 ],
                 align="center",
-                className="mb-4"
+                className="mb-4 justify-content-between"
             ),
             # Painel de Filtros
             dbc.Card([
@@ -143,7 +143,7 @@ def criar_layout_previsao_vendas(): # Refatorar nome da função
                         ], md=4)
                     ])
                 ])
-            ], className="mb-4"),
+            ], className="custom-card mb-4"),
             
             # Parâmetros Específicos de Modelo
             html.Div(id='parametros-modelo', children=[
@@ -217,7 +217,7 @@ def criar_layout_previsao_vendas(): # Refatorar nome da função
                         )
                     ])
                 ])
-            ], className='custom-card'),
+            ], className='custom-card mb-4'),
             # Seção de Inteligência de Negócio e Impacto Operacional
             html.Div([
                 html.H3('Inteligência de Negócio e Impacto Operacional', className='section-subtitle'),
