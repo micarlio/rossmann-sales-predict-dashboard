@@ -344,6 +344,7 @@ body {
     background-color: var(--azul-escuro); /* Refatorar variável */
     color: var(--branco-neutro); /* Refatorar variável */
     font-weight: 600;
+    text-align: center;
 }
 
 .table-hover tbody tr:hover {
@@ -408,4 +409,283 @@ body {
     background-color: var(--branco-neutro) !important; /* Refatorar variável */
     border: 1px solid var(--cinza-neutro) !important; /* Refatorar variável */
     border-bottom-color: var(--branco-neutro) !important; /* remove linha inferior quando ativo */ /* Refatorar variável */
+}
+
+/* Alinhamento e estilo das células da tabela de previsão */
+.table.table-custom tbody td, .table.table-custom tbody th {
+    text-align: center;
+    vertical-align: middle;
+    font-size: 0.95rem;
+    color: var(--cinza-neutro);
+}
+
+/* Zebra stripes mais suaves (classe striped já adiciona, mas ajustamos cor) */
+.table.table-custom.table-striped tbody tr:nth-of-type(odd) {
+    background-color: #f2f4f8;
+}
+
+/* Remover bordas fortes e dar efeito de cartão */
+.table.table-custom, .table.table-custom th, .table.table-custom td {
+    border-color: #e9ecef !important;
+}
+
+/* Cabeçalho fixo opcional para tabelas em scroll */
+.table-container-scroll {
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+/* Estilos específicos para a aba de previsão de vendas */
+.previsao-vendas-container {
+    padding: 1rem;
+    background-color: var(--fundo-cinza-claro);
+}
+
+/* Grid de KPIs mais compacto */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.kpi-item {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: var(--sombra-leve);
+}
+
+.kpi-item h4 {
+    font-size: 0.85rem;
+    color: var(--cinza-neutro);
+    margin-bottom: 0.5rem;
+}
+
+.kpi-item .value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--azul-escuro);
+}
+
+/* Layout de gráficos em grid */
+.graficos-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.grafico-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: var(--sombra-leve);
+    padding: 1rem;
+    height: 100%;
+}
+
+/* Filtros mais compactos */
+.filtros-compactos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: var(--sombra-leve);
+    margin-bottom: 1rem;
+}
+
+.filtro-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.filtro-item label {
+    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
+    color: var(--cinza-neutro);
+}
+
+/* Tabela mais compacta */
+.tabela-compacta {
+    font-size: 0.85rem;
+}
+
+.tabela-compacta th,
+.tabela-compacta td {
+    padding: 0.5rem 0.75rem;
+}
+
+/* Botões de ação mais modernos */
+.btn-acao {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-acao:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Melhorias no gráfico principal */
+.grafico-principal {
+    background: white;
+    border-radius: 8px;
+    box-shadow: var(--sombra-leve);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Estilo para o painel de informações */
+.info-panel {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.info-panel-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 KPIs por linha */
+    gap: 1rem;
+    grid-auto-rows: 1fr; /* Filas com mesma altura */
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
+}
+
+/* Ajuste de listas internas para não quebrar layout */
+.info-item ul {
+    padding-left: 1rem;
+    margin-bottom: 0;
+}
+
+.info-item-label {
+    font-size: 0.75rem;
+    color: var(--cinza-neutro);
+    margin-bottom: 0.25rem;
+}
+
+.info-item-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--azul-escuro);
+}
+
+/* ====================  Refinamentos de Elegância  ==================== */
+
+/* Sombras e bordas suaves para todos os novos cards */
+.kpi-item,
+.grafico-card,
+.info-panel,
+.previsao-vendas-container .card {
+    border: 1px solid rgba(0, 35, 70, 0.05);
+    box-shadow: 0 2px 12px rgba(0, 35, 70, 0.05);
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+.kpi-item:hover,
+.grafico-card:hover,
+.info-panel:hover,
+.previsao-vendas-container .card:hover {
+    box-shadow: 0 6px 20px rgba(0, 35, 70, 0.08);
+    transform: translateY(-3px);
+}
+
+/* Acento de cor sutil à esquerda dos KPIs */
+.kpi-item {
+    position: relative;
+    overflow: hidden;
+}
+.kpi-item::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 4px;
+    background: linear-gradient(180deg, var(--vermelho-rossmann) 0%, var(--azul-destaque) 100%);
+}
+
+/* Tipografia refinada */
+.kpi-item h4,
+.info-item-label {
+    font-family: 'Poppins', sans-serif;
+    letter-spacing: 0.3px;
+}
+.kpi-item .value,
+.info-item-value {
+    font-family: 'Poppins', sans-serif;
+    letter-spacing: 0.2px;
+}
+
+/* Ajustes em dcc.Dropdown tamanho pequeno */
+.dropdown-sm .Select-control {
+    min-height: 32px;
+    height: 32px;
+    font-size: 0.85rem;
+    border-radius: 4px;
+    border-color: rgba(0, 0, 0, 0.08);
+    padding: 2px 6px;
+}
+.dropdown-sm .Select-placeholder,
+.dropdown-sm .Select-value-label {
+    font-size: 0.85rem;
+}
+
+/* Ajuste dos Sliders para aparência mais clean */
+.rc-slider-track {
+    background-color: var(--vermelho-rossmann);
+}
+.rc-slider-handle {
+    border-color: var(--vermelho-rossmann);
+    width: 14px;
+    height: 14px;
+    margin-top: -5px;
+}
+.rc-slider-handle:focus,
+.rc-slider-handle:hover {
+    box-shadow: none;
+    border-color: var(--vermelho-rossmann);
+}
+
+/* Reduz espaçamento interno dos cabeçalhos dos cards */
+.previsao-vendas-container .card-header {
+    padding: 0.75rem 1rem;
+    background-color: transparent;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+.previsao-vendas-container .card-body {
+    padding: 1rem 1.25rem;
+}
+
+/* Tabela compacta com cabeçalho fixo mais elegante */
+.tabela-compacta thead th {
+    position: sticky;
+    top: 0;
+    background: var(--fundo-cinza-claro);
+    z-index: 1;
+    font-size: 0.8rem;
+    color: var(--cinza-neutro);
+}
+.tabela-compacta tbody tr:hover {
+    background-color: rgba(0, 35, 70, 0.03);
+}
+
+/* Diminuir fonte dos radio items */
+#radio-metrica-previsao .btn {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.6rem;
+}
+
+/* Hide Plotly modebar background for cleaner look */
+.js-plotly-plot .modebar {
+    background: transparent !important;
 }

@@ -95,6 +95,17 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
     """
     Registra callbacks para a página de Previsão de Vendas.
     """
+    # Toggle collapse do painel de filtros
+    @aplicativo.callback(
+        Output('collapse-filtros', 'is_open'),
+        Input('btn-toggle-filtros', 'n_clicks'),
+        State('collapse-filtros', 'is_open')
+    )
+    def toggle_collapse_filtros(n, is_open):
+        if n:
+            return not is_open
+        return is_open
+
     # Callback para popular dropdown de lojas
     @aplicativo.callback(
         Output('dropdown-lojas-previsao', 'options'),
@@ -394,12 +405,16 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
         try:
             fig = go.Figure()
 
-            # Filtra o histórico para mostrar apenas os últimos 2 meses antes da previsão
-            data_inicio_historico = forecast['ds'].min() - pd.DateOffset(months=2)
-            ts_display = ts[ts['ds'] >= data_inicio_historico]
-            
-            # Histórico - agora usando o dataframe 'ts_display' filtrado
-            fig.add_trace(go.Scatter(x=ts_display['ds'], y=ts_display['y'], name='Histórico (2 Meses)', mode='lines', line=dict(color='#1f77b4')))
+            # Adiciona TODO o histórico e habilita range-slider para seleção dinâmica
+            fig.add_trace(go.Scatter(x=ts['ds'], y=ts['y'], name='Histórico', mode='lines', line=dict(color='#1f77b4')))
+
+            # Faixa padrão de visualização: últimos 2 meses antes da previsão
+            data_inicio_visual = ts['ds'].max() - pd.DateOffset(months=2)
+            data_fim_visual = forecast['ds'].max()
+
+            # Ativa range-slider e define o intervalo inicial exibido
+            fig.update_layout(xaxis_rangeslider=dict(visible=True))
+            fig.update_xaxes(range=[data_inicio_visual, data_fim_visual])
             
             # Previsão
             fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'], name='Previsão', mode='lines', line=dict(color='#ff7f0e')))
@@ -422,12 +437,47 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
             
-            # Formatar tabela
-            df_table = pd.DataFrame({'Data': forecast['ds'], 'Previsão': forecast['yhat']})
-            df_table['Data'] = df_table['Data'].dt.strftime('%d/%m/%Y')
-            df_table['Previsão'] = df_table['Previsão'].round(2).apply(lambda x: f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-            
-            tabela_dash = dbc.Table.from_dataframe(df_table, striped=True, bordered=True, hover=True, responsive=True)
+            # ---- Montagem da tabela com coluna de variação ----
+            df_tab = pd.DataFrame({
+                'Data': forecast['ds'],
+                'Previsão': forecast['yhat']
+            })
+            # Formatação
+            df_tab['Data_fmt'] = df_tab['Data'].dt.strftime('%d/%m/%Y')
+            df_tab['Prev_fmt'] = df_tab['Previsão'].round(2).apply(lambda x: f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+            # Cálculo da variação percentual dia-a-dia
+            df_tab['Var_pct'] = df_tab['Previsão'].pct_change() * 100
+
+            # Cabeçalho
+            table_header = html.Thead(html.Tr([
+                html.Th("Data", className="text-center"),
+                html.Th("Previsão", className="text-center"),
+                html.Th("Variação (%)", className="text-center")
+            ]))
+
+            # Linhas
+            table_rows = []
+            for _, r in df_tab.iterrows():
+                # Variação formatada
+                if pd.isna(r['Var_pct']):
+                    var_cell = html.Span("-", className="text-muted")
+                else:
+                    sinal_classe = "text-success" if r['Var_pct'] >= 0 else "text-danger"
+                    var_cell = html.Span(f"{r['Var_pct']:.2f}%", className=f"fw-bold {sinal_classe}")
+                table_rows.append(html.Tr([
+                    html.Td(r['Data_fmt']),
+                    html.Td(r['Prev_fmt']),
+                    html.Td(var_cell, className="text-center")
+                ]))
+
+            tabela_dash = dbc.Table(
+                [table_header, html.Tbody(table_rows)],
+                striped=True,
+                bordered=False,
+                hover=True,
+                responsive=True,
+                class_name="table-custom table-striped"
+            )
             logger.info("Gráfico e tabela gerados com sucesso")
             return fig, tabela_dash
             
@@ -481,238 +531,322 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
             top_weekday = mapping.get(int(dias_media.idxmax()), '') if not dias_media.empty else ''
             # Dias com promoção prevista (lista de datas)
             promo_dates = fc_dates.strftime('%d/%m/%Y')
-            # Montar miniblocos (3 por linha, 12 KPIs)
+            # Montar miniblocos (agora em linhas de 3 colunas para melhor simetria)
             items = [
-                dbc.Col(html.Div([html.P("Total Previsto", className="text-muted"), html.H5(f"€ {total_prev:,.2f}", className="fw-bold")]), md=4),
-                dbc.Col(html.Div([html.P("Média Prevista", className="text-muted"), html.H5(f"€ {media_prev:,.2f}", className="fw-bold")]), md=4),
-                dbc.Col(html.Div([html.P("Variação vs. Hist. (%)", className="text-muted"), html.H5(f"{var_perc:,.2f}%", className=("fw-bold text-success" if var_perc>=0 else "fw-bold text-danger"))]), md=4),
-                dbc.Col(html.Div([html.P(f"Pico ({pico_date})", className="text-muted"), html.H5(f"€ {pico_val:,.2f}", className="fw-bold")]), md=4),
-                dbc.Col(html.Div([html.P(f"Vale ({vale_date})", className="text-muted"), html.H5(f"€ {vale_val:,.2f}", className="fw-bold")]), md=4),
-                dbc.Col(html.Div([html.P("Ampl. IC Média", className="text-muted"), html.H5(f"€ {amp_ic:,.2f}", className="fw-bold")]), md=4),
-                dbc.Col(html.Div([html.P("Variação Acumulada (%)", className="text-muted"), html.H5(f"{var_acum:,.2f}%", className=("fw-bold text-success" if var_acum>=0 else "fw-bold text-danger"))]), md=4),
-                dbc.Col(html.Div([html.P("Períodos Previstos", className="text-muted"), html.H5(len(fc_y), className="fw-bold")]), md=4),
-                dbc.Col(html.Div([html.P("Dias com Promoção Prevista", className="text-muted"), html.Div(html.Ul([html.Li(d) for d in promo_dates]), style={'maxHeight':'8rem','overflowY':'auto'})]), md=4),
-                dbc.Col(html.Div([html.P("Maior Ganho (%)", className="text-muted"), html.H5(f"{max_gain:,.2f}%", className=("fw-bold text-success" if max_gain>=0 else "fw-bold text-danger"))]), md=4),
-                dbc.Col(html.Div([html.P("Dia da Semana Top", className="text-muted"), html.H5(top_weekday, className="fw-bold")]), md=4),
-                dbc.Col(html.Div([html.P("Desvio Padrão da Previsão", className="text-muted"), html.H5(f"€ {std_val:,.2f}", className="fw-bold")]), md=4),
+                ("Total Previsto", f"€ {total_prev:,.0f}"),
+                ("Média Prevista", f"€ {media_prev:,.0f}"),
+                ("Variação vs. Hist. (%)", f"{var_perc:,.2f}%", "text-success" if var_perc>=0 else "text-danger"),
+                ("Variação Acumulada (%)", f"{var_acum:,.2f}%", "text-success" if var_acum>=0 else "text-danger"),
+                ("Dia da Semana Top", top_weekday),
+                ("Dias com Promoção Prevista", html.Ul([html.Li(d) for d in promo_dates], style={'maxHeight':'3rem','overflowY':'auto'})),
             ]
-            return [dbc.Row(items)]
+
+            items_divs = []
+            for titulo, valor, *color in items:
+                estilo_valor = "fw-bold " + (color[0] if color else "")
+                # Se o valor já é um componente (ex.: html.Ul), não o envolvemos em html.H5
+                if isinstance(valor, (html.Ul, html.Ol, html.Div)):
+                    valor_component = valor
+                else:
+                    valor_component = html.H5(valor, className=estilo_valor)
+
+                items_divs.append(
+                    html.Div([
+                        html.P(titulo, className="text-muted mb-1 small"),
+                        valor_component
+                    ], className="info-item")
+                )
+
+            return items_divs
         except Exception as e:
             return [html.Div(f"Erro ao gerar informações: {e}")]
     
+    # ==================================================================
+    # NOVOS GRÁFICOS (gerados a partir do grafico-previsao já existente)
+    # ==================================================================
+
     @aplicativo.callback(
-        Output('otimizacao-estoque-conteudo', 'children'),
+        Output('grafico-empilhado', 'figure'),
+        Output('heatmap-calendario', 'figure'),
+        Input('grafico-previsao', 'figure')
+    )
+    def gerar_graficos_adicionais(fig):
+        import numpy as np
+        import pandas as pd
+        import plotly.graph_objects as go
+        import plotly.express as px
+
+        # Se gráfico não está pronto ainda
+        if not fig or 'data' not in fig or len(fig['data']) < 2:
+            fig_placeholder = go.Figure()
+            fig_placeholder.update_layout(template='plotly_white', xaxis_visible=False, yaxis_visible=False,
+                                          annotations=[dict(text="Aguardando geração da previsão", showarrow=False)])
+            return [fig_placeholder]*2
+
+        # --- Extrai dados ---
+        hist_x = pd.to_datetime(fig['data'][0]['x'])
+        hist_y = np.array(fig['data'][0]['y'], dtype=float)
+
+        fc_x = pd.to_datetime(fig['data'][1]['x'])
+        fc_y = np.array(fig['data'][1]['y'], dtype=float)
+
+        # ======================= 1. Acumulado =========================
+        # hist_cum = np.cumsum(hist_y)
+        # fc_cum = hist_cum[-1] + np.cumsum(fc_y)
+        #
+        # fig_acum = go.Figure()
+        # fig_acum.add_trace(go.Scatter(x=hist_x, y=hist_cum, mode='lines', name='Real Acumulado', line=dict(color='#1f77b4')))
+        # fig_acum.add_trace(go.Scatter(x=fc_x, y=fc_cum, mode='lines', name='Previsto Acumulado', line=dict(color='#ff7f0e')))
+        # fig_acum.update_layout(template='plotly_white', showlegend=True, xaxis_title='Data', yaxis_title='Vendas Acumuladas')
+
+        # ======================= 2. Amplitude IC ======================
+        # if len(fig['data']) >= 4:
+        #     upper = np.array(fig['data'][2]['y'], dtype=float)
+        #     lower = np.array(fig['data'][3]['y'], dtype=float)
+        #     amplitude = upper - lower
+        #     fig_ic = go.Figure(go.Bar(x=fc_x, y=amplitude, marker_color='#2ca02c'))
+        #     fig_ic.update_layout(template='plotly_white', xaxis_title='Data', yaxis_title='Amplitude do IC')
+        # else:
+        #     fig_ic = go.Figure()
+        #     fig_ic.update_layout(template='plotly_white', xaxis_visible=False, yaxis_visible=False,
+        #                          annotations=[dict(text="IC não disponível", showarrow=False)])
+
+        # ======================= 3. Distribuição por Dia da Semana ====
+        df_fc = pd.DataFrame({'ds': fc_x, 'y': fc_y})
+        df_fc['weekday'] = df_fc['ds'].dt.weekday
+        mapping = {0: 'Seg', 1: 'Ter', 2: 'Qua', 3: 'Qui', 4: 'Sex', 5: 'Sáb', 6: 'Dom'}
+        distrib = df_fc.groupby('weekday')['y'].sum().reset_index()
+        distrib['weekday_name'] = distrib['weekday'].map(mapping)
+        fig_dist = go.Figure(go.Bar(x=distrib['weekday_name'], y=distrib['y'], marker_color='#1f77b4'))
+        fig_dist.update_layout(template='plotly_white', xaxis_title='Dia da Semana', yaxis_title='Total Previsto')
+
+        # ======================= 4. Heatmap Calendário ===============
+        df_fc['week'] = df_fc['ds'].dt.isocalendar().week.astype(int)
+        pivot = df_fc.pivot_table(index='weekday', columns='week', values='y', aggfunc='sum')
+        # Ordena dias da semana 0-6
+        pivot = pivot.reindex(range(0,7))
+        heatmap = go.Figure(data=go.Heatmap(z=pivot.values, x=pivot.columns, y=[mapping.get(i,'') for i in pivot.index],
+                                           colorscale='Blues'))
+        heatmap.update_layout(template='plotly_white', xaxis_title='Semana do Ano', yaxis_title='Dia da Semana')
+
+        # ======================= 5. Top Picos =========================
+        # top_n = 10 if len(fc_y) > 10 else len(fc_y)
+        # ind_top = np.argsort(fc_y)[-top_n:][::-1]
+        # top_dates = fc_x[ind_top]
+        # top_vals = fc_y[ind_top]
+        # fig_top = go.Figure(go.Bar(x=top_dates.strftime('%d/%m/%Y'), y=top_vals, marker_color='#d62728'))
+        # fig_top.update_layout(template='plotly_white', xaxis_title='Data', yaxis_title='Previsão',
+        #                       xaxis_tickangle=-45)
+
+        return fig_dist, heatmap
+
+    # ==================================================================
+    # SIMULADOR WHAT-IF
+    # ==================================================================
+
+    @aplicativo.callback(
+        Output('grafico-whatif', 'figure'),
+        Output('kpi-total-base', 'children'),
+        Output('kpi-total-sim', 'children'),
+        Input('btn-simular-whatif', 'n_clicks'),
+        State('slider-whatif-preco', 'value'),
+        State('slider-whatif-promo', 'value'),
+        State('grafico-previsao', 'figure'),
+        prevent_initial_call=True
+    )
+    def simular_whatif(n_clicks, delta_preco_pct, delta_promo_pp, fig_previsao):
+        import numpy as np
+        import pandas as pd
+        import plotly.graph_objects as go
+
+        # Parâmetros de elasticidade (hipotéticos, podem vir de arquivo JSON)
+        ELASTIC_PRICE = -1.2   # cada -1% preço -> +1.2% vendas
+        ELASTIC_PROMO = 0.8    # cada +1 p.p. promo -> +0.8% vendas
+
+        if not fig_previsao or 'data' not in fig_previsao or len(fig_previsao['data']) < 2:
+            fig_placeholder = go.Figure()
+            fig_placeholder.update_layout(template='plotly_white', xaxis_visible=False, yaxis_visible=False,
+                                          annotations=[dict(text="Gere a previsão primeiro", showarrow=False)])
+            return fig_placeholder, "-", "-"
+
+        # Dados base
+        fc_x = pd.to_datetime(fig_previsao['data'][1]['x'])
+        fc_y = np.array(fig_previsao['data'][1]['y'], dtype=float)
+
+        # Cálculo do fator de ajuste
+        fator_preco = 1 + (ELASTIC_PRICE * (delta_preco_pct / 100))
+        fator_promo = 1 + (ELASTIC_PROMO * (delta_promo_pp / 100))
+        ajuste = fator_preco * fator_promo
+
+        y_sim = fc_y * ajuste
+
+        # Gráfico comparativo
+        fig_sim = go.Figure()
+        fig_sim.add_trace(go.Scatter(x=fc_x, y=fc_y, name='Base', mode='lines', line=dict(color='#1f77b4')))
+        fig_sim.add_trace(go.Scatter(x=fc_x, y=y_sim, name='Cenário', mode='lines', line=dict(color='#ff7f0e')))
+        fig_sim.update_layout(template='plotly_white', xaxis_title='Data', yaxis_title='Vendas Previstas')
+
+        total_base = fc_y.sum()
+        total_sim = y_sim.sum()
+
+        def format_currency(v):
+            return f"€ {v:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+
+        return fig_sim, format_currency(total_base), format_currency(total_sim) 
+
+    # ==================================================================
+    # GRÁFICO COMPARATIVO DE MÉTRICAS PREVISTAS (Sales / Customers / Ticket)
+    # ==================================================================
+    
+    @aplicativo.callback(
+        Output('grafico-comparativo', 'figure'),
         [
+            Input('slider-horizonte-previsao', 'value'),
+            Input('dropdown-granularidade-previsao', 'value'),
+            Input('dropdown-modelo-previsao', 'value'),
             Input('dropdown-tipo-loja', 'value'),
             Input('dropdown-lojas-previsao', 'value'),
             Input('dropdown-promocao', 'value'),
             Input('checklist-dias-semana', 'value'),
             Input('armazenamento-df-principal', 'data')
-        ],
-        prevent_initial_call=True
+        ]
     )
-    def atualizar_otimizacao_estoque(tipo_loja, lojas, promocao, dias_semana, store_data):
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info("Atualizando otimização de estoque")
-        
-        try:
-            df = deserializar_df(store_data)
-            if df is None: 
-                logger.warning("DataFrame é None após deserialização")
-                return html.P("Carregando dados...")
+    def gerar_comparativo_metricas(horizonte, granularidade, modelo, tipo_loja, lojas, promocao, dias_semana, store_data):
+        import pandas as pd
+        import numpy as np
+        import plotly.graph_objects as go
+        from prophet import Prophet
+        from statsmodels.tsa.arima.model import ARIMA
+        # Preparação de dados compartilhada
+        df = deserializar_df(store_data)
+        if df is None or df.empty:
+            return go.Figure()
+        df_filtrado = filtrar_dados(df, lojas, tipo_loja, promocao, dias_semana)
+        if df_filtrado.empty:
+            return go.Figure()
 
-            # Usa a função de filtro centralizada
-            df_filtrado = filtrar_dados(df, lojas, tipo_loja, promocao, dias_semana)
-            
-            if df_filtrado.empty:
-                logger.warning("DataFrame filtrado está vazio")
-                return html.P("Sem dados para a otimização de estoque.")
-                
-            # Verificar se a coluna necessária existe
-            if 'Sales' not in df_filtrado.columns:
-                logger.error("Coluna Sales não encontrada no DataFrame")
-                return html.P("Erro: Coluna Sales não encontrada nos dados")
+        fig = go.Figure()
+        metrica_info = {
+            'Sales': {'col':'Sales','nome':'Vendas','cor':'#1f77b4'},
+            'Customers': {'col':'Customers','nome':'Clientes','cor':'#2ca02c'},
+            'SalesPerCustomer': {'col':'TicketMedio','nome':'Ticket Médio','cor':'#ff7f0e'}
+        }
 
-            # Lógica simplificada de otimização de estoque
-            venda_media_diaria = df_filtrado['Sales'].mean()
-            estoque_seguranca = venda_media_diaria * 1.5
-            ponto_ressuprimento = estoque_seguranca + (venda_media_diaria * 3)
-            
-            logger.info(f"Otimização calculada: Venda média={venda_media_diaria}, Estoque segurança={estoque_seguranca}")
+        for key, info in metrica_info.items():
+            df_work = df_filtrado.copy()
+            if key == 'SalesPerCustomer':
+                df_work['TicketMedio'] = (df_work['Sales'] / df_work['Customers'].replace(0, np.nan)).fillna(0)
 
-            return [
-                html.H5("Análise de Estoque Simplificada"),
-                dbc.Row([
-                    dbc.Col(dbc.Card([dbc.CardBody([
-                        html.H6("Venda Média Diária", className="card-title"),
-                        html.P(f"{venda_media_diaria:,.2f} unidades", className="card-text")
-                    ])]), width=4),
-                    dbc.Col(dbc.Card([dbc.CardBody([
-                        html.H6("Estoque de Segurança", className="card-title"),
-                        html.P(f"{estoque_seguranca:,.2f} unidades", className="card-text")
-                    ])]), width=4),
-                    dbc.Col(dbc.Card([dbc.CardBody([
-                        html.H6("Ponto de Ressuprimento", className="card-title"),
-                        html.P(f"{ponto_ressuprimento:,.2f} unidades", className="card-text")
-                    ])]), width=4),
-                ])
-            ]
-        except Exception as e:
-            logger.error(f"Erro ao atualizar otimização de estoque: {str(e)}")
-            return html.P(f"Erro ao calcular otimização de estoque: {str(e)}")
+            col = info['col']
+            df_agr = df_work.set_index('Date')
+            freq_map = {'diaria':'D','semanal':'W','mensal':'MS'}
+            freq = freq_map.get(granularidade, 'D')
+            if key == 'SalesPerCustomer':
+                ts = df_agr.resample(freq).mean(numeric_only=True)[[col]].reset_index()
+            else:
+                ts = df_agr.resample(freq).sum(numeric_only=True)[[col]].reset_index()
+            ts = ts.dropna()
+            ts.rename(columns={col:'y','Date':'ds'}, inplace=True)
+            if ts.empty or len(ts)<10:
+                continue
+
+            # Forecast simples com Prophet (para tempo)
+            try:
+                m = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False)
+                m.fit(ts)
+                last_date = ts['ds'].max()
+                offset = pd.DateOffset(days=1) if freq=='D' else (pd.DateOffset(weeks=1) if freq=='W' else pd.DateOffset(months=1))
+                future_dates = pd.date_range(start=last_date+offset, periods=horizonte, freq=freq)
+                forecast = m.predict(pd.DataFrame({'ds':future_dates}))
+                fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'], name=info['nome'], line=dict(color=info['cor'])))
+            except Exception:
+                continue
+
+        fig.update_layout(template='plotly_white', xaxis_title='Data', yaxis_title='Valor Previsto')
+        return fig 
+
+    # ==================================================================
+    # PREVISÃO POR TIPO DE LOJA
+    # ==================================================================
 
     @aplicativo.callback(
-        Output('roi-marketing-output','children'),
-        Input('btn-simular-campanha','n_clicks'),
+        Output('grafico-tipoloja', 'figure'),
+        Output('tabela-tipoloja', 'children'),
         [
-            State('dropdown-tipo-loja', 'value'),
-            State('dropdown-lojas-previsao', 'value'),
-            State('dropdown-promocao', 'value'),
-            State('checklist-dias-semana', 'value'),
-            State('input-custo-campanha','value'),
-            State('input-periodo-campanha','value'),
-            State('armazenamento-df-principal','data')
-        ],
-        prevent_initial_call=True
+            Input('radio-metrica-previsao', 'value'),
+            Input('slider-horizonte-previsao', 'value'),
+            Input('dropdown-granularidade-previsao', 'value'),
+            Input('dropdown-tipo-loja', 'value'),
+            Input('dropdown-lojas-previsao', 'value'),
+            Input('dropdown-promocao', 'value'),
+            Input('checklist-dias-semana', 'value'),
+            Input('armazenamento-df-principal', 'data')
+        ]
     )
-    def simular_roi_marketing(n_clicks, tipo_loja, lojas, promocao, dias_semana, custo, periodo, store_data):
-        import logging
-        logger = logging.getLogger(__name__)
-        
-        if n_clicks == 0: 
-            return ""
-            
-        logger.info(f"Simulando ROI de marketing. Custo: {custo}, Período: {periodo}")
-        
-        try:
-            df = deserializar_df(store_data)
-            if df is None: 
-                logger.warning("DataFrame é None após deserialização")
-                return dbc.Alert("Dados não carregados.", color="warning")
+    def previsao_por_tipoloja(target, horizonte, granularidade, tipos_loja, lojas, promocao, dias_semana, store_data):
+        import pandas as pd
+        import numpy as np
+        import plotly.graph_objects as go
+        from prophet import Prophet
 
-            # Usa a função de filtro centralizada
-            df_filtrado = filtrar_dados(df, lojas, tipo_loja, promocao, dias_semana)
-            
-            if df_filtrado.empty:
-                logger.warning("DataFrame filtrado está vazio")
-                return dbc.Alert("Não há dados de vendas para o período e filtros selecionados.", color="warning")
-                
-            # Verificar se a coluna necessária existe
-            if 'Sales' not in df_filtrado.columns:
-                logger.error("Coluna Sales não encontrada no DataFrame")
-                return dbc.Alert("Erro: Coluna Sales não encontrada nos dados", color="danger")
-                
-            # Verificar se custo e período são válidos
-            if custo is None or custo <= 0:
-                logger.warning(f"Custo inválido: {custo}")
-                return dbc.Alert("Por favor, insira um custo de campanha válido (maior que zero).", color="warning")
-                
-            if periodo is None or periodo <= 0:
-                logger.warning(f"Período inválido: {periodo}")
-                return dbc.Alert("Por favor, insira um período válido (maior que zero).", color="warning")
+        df = deserializar_df(store_data)
+        if df is None or df.empty or not tipos_loja:
+            return go.Figure(), []
 
-            vendas_base = df_filtrado['Sales'].sum()
-            vendas_projetadas = vendas_base * 1.15
-            lucro_incremental = (vendas_projetadas - vendas_base) * 0.1
-            roi = ((lucro_incremental - custo) / custo) * 100 if custo and custo > 0 else 0
-            
-            logger.info(f"ROI calculado: {roi:.2f}%")
+        freq_map = {'diaria':'D','semanal':'W','mensal':'MS'}
+        freq = freq_map.get(granularidade, 'D')
 
-            return html.Div([
-                html.H5("Resultado da Simulação de ROI"),
-                html.P(f"Lucro Incremental Estimado: R$ {lucro_incremental:,.2f}"),
-                html.P(f"ROI Estimado: {roi:.2f}%")
-            ])
-        except Exception as e:
-            logger.error(f"Erro ao simular ROI de marketing: {str(e)}")
-            return dbc.Alert(f"Erro ao calcular ROI: {str(e)}", color="danger")
+        fig = go.Figure()
+        resumo = []
 
-    @aplicativo.callback(
-        Output('modal-elasticidade','is_open'),
-        Input('btn-open-modal-elasticidade','n_clicks'),
-        Input('btn-close-modal-elasticidade','n_clicks'),
-        State('modal-elasticidade','is_open')
-    )
-    def toggle_modal_elasticidade(n_open, n_close, is_open):
-        if n_open or n_close:
-            return not is_open
-        return is_open
+        # Determine column for metric
+        metrica_nome = ''
+        if target == 'Sales':
+            col_base = 'Sales'; metrica_nome='Vendas'
+        elif target == 'Customers':
+            col_base = 'Customers'; metrica_nome='Clientes'
+        else:
+            col_base = 'TicketMedio'; metrica_nome='Ticket Médio'
 
-    @aplicativo.callback(
-        Output('grafico-elasticidade-vendas','figure'),
-        Output('grafico-elasticidade-receita','figure'),
-        Input('btn-simular-preco','n_clicks'),
-        [
-            State('dropdown-tipo-loja', 'value'),
-            State('dropdown-lojas-previsao', 'value'),
-            State('dropdown-promocao', 'value'),
-            State('checklist-dias-semana', 'value'),
-            State('input-alteracao-preco','value'),
-            State('armazenamento-df-principal','data')
-        ],
-        prevent_initial_call=True
-    )
-    def simular_elasticidade(n_clicks, tipo_loja, lojas, promocao, dias_semana, pct_change, store_data):
-        import logging
-        logger = logging.getLogger(__name__)
-        
-        if n_clicks == 0 or pct_change is None:
-            return criar_figura_vazia("Aguardando simulação"), criar_figura_vazia("")
-            
-        logger.info(f"Simulando elasticidade de preço. Alteração: {pct_change}%")
-        
-        try:
-            df = deserializar_df(store_data)
-            if df is None:
-                logger.warning("DataFrame é None após deserialização")
-                return criar_figura_vazia("Carregando dados..."), criar_figura_vazia("")
-            
-            # Usa a função de filtro centralizada
-            df_filtrado = filtrar_dados(df, lojas, tipo_loja, promocao, dias_semana)
-            
-            if df_filtrado.empty:
-                logger.warning("DataFrame filtrado está vazio")
-                return criar_figura_vazia("Sem dados para simular"), criar_figura_vazia("")
-                
-            # Verificar se a coluna necessária existe
-            if 'Sales' not in df_filtrado.columns:
-                logger.error("Coluna Sales não encontrada no DataFrame")
-                return criar_figura_vazia("Erro: Coluna Sales não encontrada"), criar_figura_vazia("")
+        for tipo in tipos_loja:
+            df_tipo = df[df['StoreType'] == tipo]
+            df_tipo = filtrar_dados(df_tipo, lojas, [tipo], promocao, dias_semana)
+            if df_tipo.empty: continue
+            if target == 'SalesPerCustomer':
+                df_tipo['TicketMedio'] = (df_tipo['Sales'] / df_tipo['Customers'].replace(0, np.nan)).fillna(0)
 
-            elasticidade_preco = -1.5
-            variacao_vendas = elasticidade_preco * pct_change
-            vendas_base = df_filtrado['Sales'].sum()
-            vendas_simulada = vendas_base * (1 + variacao_vendas / 100)
-            
-            receita_base = df_filtrado['Sales'].sum() 
-            receita_simulada = vendas_simulada * (1 + pct_change / 100)
-            
-            logger.info(f"Elasticidade calculada: Variação vendas={variacao_vendas:.2f}%, Receita simulada={receita_simulada:.2f}")
+            df_agr = df_tipo.set_index('Date')
+            if target == 'SalesPerCustomer':
+                ts = df_agr.resample(freq).mean(numeric_only=True)[[col_base]].reset_index()
+            else:
+                ts = df_agr.resample(freq).sum(numeric_only=True)[[col_base]].reset_index()
+            ts = ts.dropna()
+            ts.rename(columns={'Date':'ds', col_base:'y'}, inplace=True)
+            if ts.empty or len(ts)<10: continue
 
-            fig_vendas = go.Figure(go.Indicator(
-                mode = "number+delta", 
-                value = vendas_simulada,
-                delta = {'reference': vendas_base, 'relative': True, 'valueformat': '.1%'},
-                title = {"text": "Vendas Totais"}
-            ))
-                
-            fig_receita = go.Figure(go.Indicator(
-                mode = "number+delta", 
-                value = receita_simulada,
-                delta = {'reference': receita_base, 'relative': True, 'valueformat': '.1%'},
-                title = {"text": "Receita Total"}
-            ))
-                
-            # Melhorar a aparência dos gráficos
-            for fig in [fig_vendas, fig_receita]:
-                fig.update_layout(
-                    height=300,
-                    margin=dict(l=30, r=30, t=50, b=30),
-                    font=dict(size=14)
-                )
+            try:
+                m = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False)
+                m.fit(ts)
+                last_date = ts['ds'].max()
+                offset = pd.DateOffset(days=1) if freq=='D' else (pd.DateOffset(weeks=1) if freq=='W' else pd.DateOffset(months=1))
+                future_dates = pd.date_range(start=last_date+offset, periods=horizonte, freq=freq)
+                forecast = m.predict(pd.DataFrame({'ds':future_dates}))
+                fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'], mode='lines', name=f"Tipo {tipo.upper()}"))
 
-            return fig_vendas, fig_receita
-        except Exception as e:
-            logger.error(f"Erro ao simular elasticidade: {str(e)}")
-            return criar_figura_vazia(f"Erro: {str(e)}"), criar_figura_vazia("") 
+                total_prev = forecast['yhat'].sum()
+                resumo.append({'Tipo': tipo.upper(), 'Total Previsto': total_prev})
+            except Exception:
+                continue
+
+        # Tabela resumo
+        if resumo:
+            df_resumo = pd.DataFrame(resumo)
+            total_geral = df_resumo['Total Previsto'].sum()
+            df_resumo['% Part'] = (df_resumo['Total Previsto']/total_geral*100).round(2)
+            df_resumo['Total Previsto'] = df_resumo['Total Previsto'].round(2).apply(lambda x: f"{x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'))
+            tabela = dbc.Table.from_dataframe(df_resumo, striped=True, bordered=False, hover=True, class_name="table-custom")
+        else:
+            tabela = html.P("Sem dados para exibir")
+
+        fig.update_layout(template='plotly_white', xaxis_title='Data', yaxis_title=metrica_nome)
+        return fig, tabela 
