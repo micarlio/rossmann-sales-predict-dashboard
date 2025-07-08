@@ -7,6 +7,80 @@ def criar_layout_previsao_vendas():
     nome_pagina = "previsao-vendas"
     return dbc.Container(
         [
+            # Modal para salvar cenário
+            dbc.Modal([
+                dbc.ModalHeader(dbc.ModalTitle("Salvar Cenário")),
+                dbc.ModalBody([
+                    html.Div([
+                        dbc.Label("Nome do Cenário"),
+                        dbc.Input(
+                            type="text",
+                            id="input-nome-cenario",
+                            placeholder="Ex: Aumento de Preços Q4",
+                            className="mb-3"
+                        ),
+                        dbc.FormText(
+                            "Digite um nome descritivo para identificar este cenário posteriormente.",
+                            color="secondary"
+                        )
+                    ])
+                ]),
+                dbc.ModalFooter([
+                    dbc.Button(
+                        "Cancelar", 
+                        id="btn-cancelar-salvar-cenario", 
+                        className="me-2",
+                        color="secondary"
+                    ),
+                    dbc.Button(
+                        "Salvar", 
+                        id="btn-confirmar-salvar-cenario",
+                        color="primary"
+                    )
+                ])
+            ], id="modal-salvar-cenario", is_open=False),
+
+            # Toast para feedback
+            dbc.Toast(
+                "",
+                id="toast-feedback-cenario",
+                header="Notificação",
+                is_open=False,
+                dismissable=True,
+                duration=4000,
+                style={"position": "fixed", "top": 66, "right": 10, "width": 350}
+            ),
+
+            # Toast de feedback
+            dbc.Toast(
+                id="toast-whatif",
+                header="Cenário Salvo",
+                is_open=False,
+                dismissable=True,
+                duration=4000,
+                icon="success",
+                style={"position": "fixed", "top": 66, "right": 10, "width": 350}
+            ),
+
+            dcc.Store(id='armazenamento-metrica-selecionada'), # Armazena a métrica selecionada
+            dcc.Store(id='armazenamento-forecast-diario'), # Armazena o forecast diário para cálculos consistentes
+            dcc.Store(id='armazenamento-hist-diario'),
+            
+            # Tooltip de ajuda
+            dbc.Tooltip(
+                """
+                Simule diferentes cenários alterando variáveis como:
+                • Preço e promoções
+                • Competição
+                • Sazonalidade
+                • Operação da loja
+                
+                Crie e salve seus próprios cenários para comparação posterior.
+                """,
+                target="tooltip-whatif",
+                placement="left"
+            ),
+            
             # Cabeçalho mais compacto
             dbc.Row(
                 [
@@ -36,146 +110,127 @@ def criar_layout_previsao_vendas():
                 ),
                 dbc.Collapse(
                     dbc.CardBody([
+                        # Linha 1 de Filtros
                         dbc.Row([
-                            # Coluna 1: Filtros principais
+                            # Coluna 1: Métrica
                             dbc.Col([
-                                dbc.Row([
-                                    dbc.Col([
-                                        html.Label("Métrica", className="small fw-bold mb-1"),
-                                        dbc.RadioItems(
-                                            id='radio-metrica-previsao',
-                                            options=[
-                                                {'label': 'Vendas', 'value': 'Sales'},
-                                                {'label': 'Clientes', 'value': 'Customers'},
-                                                {'label': 'Ticket Médio', 'value': 'SalesPerCustomer'}
-                                            ],
-                                            value='Sales',
-                                            className="btn-group btn-group-sm",
-                                            inputClassName="btn-check",
-                                            labelClassName="btn btn-outline-primary btn-sm"
-                                        )
-                                    ], width=12, className="mb-2"),
-                                    dbc.Col([
-                                        html.Label("Modelo", className="small fw-bold mb-1"),
-                                        dcc.Dropdown(
-                                            id='dropdown-modelo-previsao',
-                                            options=[
-                                                {'label': 'Prophet', 'value': 'prophet'},
-                                                {'label': 'Random Forest', 'value': 'random_forest'},
-                                                {'label': 'ARIMA', 'value': 'arima'},
-                                                {'label': 'XGBoost', 'value': 'xgboost'},
-                                                {'label': 'LightGBM', 'value': 'lightgbm'},
-                                                {'label': 'Ensemble', 'value': 'ensemble'}
-                                            ],
-                                            value='prophet',
-                                            clearable=False,
-                                            className="dropdown-sm"
-                                        )
-                                    ], width=12, className="mb-2")
-                                ])
+                                html.Label("Métrica", className="small fw-bold mb-1"),
+                                dbc.RadioItems(
+                                    id='radio-metrica-previsao',
+                                    options=[
+                                        {'label': 'Vendas', 'value': 'Sales'},
+                                        {'label': 'Clientes', 'value': 'Customers'},
+                                        {'label': 'Ticket Médio', 'value': 'SalesPerCustomer'}
+                                    ],
+                                    value='Sales',
+                                    inline=True,
+                                    className="grupo-radio",
+                                    labelClassName="radio-item-custom",
+                                    inputClassName="radio-input-custom"
+                                )
                             ], md=3),
-                            
-                            # Coluna 2: Filtros de tempo
+
+                            # Coluna 2: Horizonte
                             dbc.Col([
-                                dbc.Row([
-                                    dbc.Col([
-                                        html.Label("Horizonte", className="small fw-bold mb-1"),
-                                        dcc.Slider(
-                                            id='slider-horizonte-previsao',
-                                            min=1,
-                                            max=30,
-                                            step=1,
-                                            value=7,
-                                            marks={i: str(i) for i in range(1, 31, 5)},
-                                            className="mb-3"
-                                        )
-                                    ], width=12),
-                                    dbc.Col([
-                                        html.Label("Granularidade", className="small fw-bold mb-1"),
-                                        dcc.Dropdown(
-                                            id='dropdown-granularidade-previsao',
-                                            options=[
-                                                {'label': 'Diária', 'value': 'diaria'},
-                                                {'label': 'Semanal', 'value': 'semanal'},
-                                                {'label': 'Mensal', 'value': 'mensal'}
-                                            ],
-                                            value='diaria',
-                                            clearable=False,
-                                            className="dropdown-sm"
-                                        )
-                                    ], width=12)
-                                ])
+                                html.Label("Horizonte (Semanas)", className="small fw-bold mb-1"),
+                                dcc.Slider(
+                                    id='slider-horizonte-previsao',
+                                    min=1, max=54, step=1, value=4,
+                                    marks={i: str(i) for i in range(1, 55, 9)},
+                                )
                             ], md=3),
-                            
-                            # Coluna 3: Filtros de loja
+
+                            # Coluna 3: Tipo de Loja
                             dbc.Col([
-                                dbc.Row([
-                                    dbc.Col([
-                                        html.Label("Tipo de Loja", className="small fw-bold mb-1"),
-                                        dcc.Dropdown(
-                                            id='dropdown-tipo-loja',
-                                            options=[
-                                                {'label': 'Tipo A', 'value': 'a'},
-                                                {'label': 'Tipo B', 'value': 'b'},
-                                                {'label': 'Tipo C', 'value': 'c'},
-                                                {'label': 'Tipo D', 'value': 'd'}
-                                            ],
-                                            value=['a'],
-                                            multi=True,
-                                            className="dropdown-sm"
-                                        )
-                                    ], width=12, className="mb-2"),
-                                    dbc.Col([
-                                        html.Label("Lojas Específicas", className="small fw-bold mb-1"),
-                                        dcc.Dropdown(
-                                            id='dropdown-lojas-previsao',
-                                            options=[],
-                                            multi=True,
-                                            placeholder="Selecione...",
-                                            className="dropdown-sm"
-                                        )
-                                    ], width=12)
-                                ])
+                                html.Label("Tipo de Loja", className="small fw-bold mb-1"),
+                                dcc.Dropdown(
+                                    id='dropdown-tipo-loja',
+                                    options=[
+                                        {'label': 'Todos', 'value': 'todos'},
+                                        {'label': 'Tipo A', 'value': 'a'},
+                                        {'label': 'Tipo B', 'value': 'b'},
+                                        {'label': 'Tipo C', 'value': 'c'},
+                                        {'label': 'Tipo D', 'value': 'd'}
+                                    ],
+                                    value=['todos'], multi=True, className="dropdown-sm"
+                                )
                             ], md=3),
-                            
-                            # Coluna 4: Outros filtros
+
+                            # Coluna 4: Dias da Semana
                             dbc.Col([
-                                dbc.Row([
-                                    dbc.Col([
-                                        html.Label("Dias da Semana", className="small fw-bold mb-1"),
-                                        dcc.Dropdown(
-                                            id='checklist-dias-semana',
-                                            options=[
-                                                {'label': 'Todos', 'value': 'todos'},
-                                                {'label': 'Segunda', 'value': 1},
-                                                {'label': 'Terça', 'value': 2},
-                                                {'label': 'Quarta', 'value': 3},
-                                                {'label': 'Quinta', 'value': 4},
-                                                {'label': 'Sexta', 'value': 5},
-                                                {'label': 'Sábado', 'value': 6},
-                                                {'label': 'Domingo', 'value': 7}
-                                            ],
-                                            value='todos',
-                                            multi=True,
-                                            className="dropdown-sm"
-                                        )
-                                    ], width=12, className="mb-2"),
-                                    dbc.Col([
-                                        html.Label("Promoção", className="small fw-bold mb-1"),
-                                        dcc.Dropdown(
-                                            id='dropdown-promocao',
-                                            options=[
-                                                {'label': 'Todos', 'value': 'todos'},
-                                                {'label': 'Com Promoção', 'value': 1},
-                                                {'label': 'Sem Promoção', 'value': 0}
-                                            ],
-                                            value='todos',
-                                            clearable=False,
-                                            className="dropdown-sm"
-                                        )
-                                    ], width=12)
-                                ])
-                            ], md=3)
+                                html.Label("Dias da Semana", className="small fw-bold mb-1"),
+                                dcc.Dropdown(
+                                    id='checklist-dias-semana',
+                                    options=[
+                                        {'label': 'Todos', 'value': 'todos'},
+                                        {'label': 'Segunda', 'value': 1},
+                                        {'label': 'Terça', 'value': 2},
+                                        {'label': 'Quarta', 'value': 3},
+                                        {'label': 'Quinta', 'value': 4},
+                                        {'label': 'Sexta', 'value': 5},
+                                        {'label': 'Sábado', 'value': 6},
+                                        {'label': 'Domingo', 'value': 7}
+                                    ],
+                                    value='todos', multi=True, className="dropdown-sm"
+                                )
+                            ], md=3),
+                        ], className="mb-3"), # Espaçamento entre as linhas de filtros
+
+                        # Linha 2 de Filtros
+                        dbc.Row([
+                            # Coluna 1: Modelo
+                            dbc.Col([
+                                html.Label("Modelo", className="small fw-bold mb-1"),
+                                dcc.Dropdown(
+                                    id='dropdown-modelo-previsao',
+                                    options=[
+                                        {'label': 'Prophet', 'value': 'prophet'},
+                                        {'label': 'Random Forest', 'value': 'random_forest'},
+                                        {'label': 'XGBoost', 'value': 'xgboost'},
+                                        {'label': 'LightGBM', 'value': 'lightgbm'},
+                                        {'label': 'Ensemble', 'value': 'ensemble'}
+                                    ],
+                                    value='prophet', clearable=False, className="dropdown-sm"
+                                )
+                            ], md=3),
+
+                            # Coluna 2: Granularidade
+                            dbc.Col([
+                                html.Label("Granularidade", className="small fw-bold mb-1"),
+                                dcc.Dropdown(
+                                    id='dropdown-granularidade-previsao',
+                                    options=[
+                                        {'label': 'Diária', 'value': 'diaria'},
+                                        {'label': 'Semanal', 'value': 'semanal'},
+                                        {'label': 'Mensal', 'value': 'mensal'}
+                                    ],
+                                    value='semanal', clearable=False, className="dropdown-sm"
+                                )
+                            ], md=3),
+
+                            # Coluna 3: Lojas Específicas
+                            dbc.Col([
+                                html.Label("Lojas Específicas", className="small fw-bold mb-1"),
+                                dcc.Dropdown(
+                                    id='dropdown-lojas-previsao',
+                                    options=[], multi=True, placeholder="Selecione...",
+                                    className="dropdown-sm"
+                                )
+                            ], md=3),
+
+                            # Coluna 4: Promoção
+                            dbc.Col([
+                                html.Label("Promoção", className="small fw-bold mb-1"),
+                                dcc.Dropdown(
+                                    id='dropdown-promocao',
+                                    options=[
+                                        {'label': 'Todos', 'value': 'todos'},
+                                        {'label': 'Com Promoção', 'value': 1},
+                                        {'label': 'Sem Promoção', 'value': 0}
+                                    ],
+                                    value='todos', clearable=False, className="dropdown-sm"
+                                )
+                            ], md=3),
                         ])
                     ]),
                     id="collapse-filtros",
@@ -236,10 +291,13 @@ def criar_layout_previsao_vendas():
                             dcc.Loading(
                                 id="loading-grafico-previsao",
                                 type="circle",
-                                children=dcc.Graph(
-                                    id='grafico-previsao',
-                                    config={'displayModeBar': True, 'scrollZoom': True}
-                                )
+                                children=html.Div([
+                                    dcc.Graph(
+                                        id='grafico-previsao',
+                                        config={'displayModeBar': True, 'scrollZoom': True}
+                                    ),
+                                    html.Div(id='metricas-previsao', className="mt-2 ms-1")
+                                ])
                             )
                         ])
                     ], className="mb-3"),
@@ -249,8 +307,8 @@ def criar_layout_previsao_vendas():
                         dbc.Col(
                             dbc.Card([
                                 dbc.CardBody([
-                                    html.H6("Distribuição por Dia da Semana", className="card-title"),
-                                    dcc.Graph(id='grafico-empilhado', config={'displayModeBar': False})
+                                    html.H6("Média Semanal Prevista", className="card-title"),
+                                    dcc.Graph(id='grafico-media-global', config={'displayModeBar': False})
                                 ])
                             ]),
                             md=6
@@ -258,8 +316,8 @@ def criar_layout_previsao_vendas():
                         dbc.Col(
                             dbc.Card([
                                 dbc.CardBody([
-                                    html.H6("Heatmap de Previsão", className="card-title"),
-                                    dcc.Graph(id='heatmap-calendario', config={'displayModeBar': False})
+                                    html.H6("Previsão por Tipo de Loja", className="card-title"),
+                                    dcc.Graph(id='grafico-media-tipo-loja', config={'displayModeBar': False})
                                 ])
                             ]),
                             md=6
@@ -285,7 +343,8 @@ def criar_layout_previsao_vendas():
                                 id="loading-info",
                                 type="circle",
                                 children=html.Div(id="informacoes-previsao", className="info-panel-grid")
-                            )
+                            ),
+                            style={"maxHeight": "500px", "overflowY": "auto"}
                         )
                     ], className="mb-3"),
                     
@@ -304,34 +363,252 @@ def criar_layout_previsao_vendas():
                     
                     # Simulador What-If
                     dbc.Card([
-                        dbc.CardHeader(html.H6("Simulador What-If", className="m-0")),
-                        dbc.CardBody([
+                        dbc.CardHeader([
                             dbc.Row([
-                                dbc.Col([
-                                    html.Label("Variação de Preço (%)", className="small fw-bold mb-1"),
-                                    dcc.Slider(id='slider-whatif-preco', min=-50, max=50, value=0, marks={i: f"{i}%" for i in range(-50, 51, 10)})
-                                ], width=12, className="mb-3"),
-                                dbc.Col([
-                                    html.Label("Variação de Promoção (p.p.)", className="small fw-bold mb-1"),
-                                    dcc.Slider(id='slider-whatif-promo', min=-100, max=100, value=0, marks={i: f"{i}%" for i in range(-100, 101, 20)})
-                                ], width=12, className="mb-3"),
-                                dbc.Col([
-                                    dbc.Button("Simular", id="btn-simular-whatif", color="primary", size="sm", className="w-100")
-                                ], width=12, className="mb-3"),
+                                dbc.Col(html.H6("Simulador What-If", className="m-0"), width="auto"),
+                                dbc.Col(
+                                    dbc.Button(
+                                        html.I(className="fas fa-question-circle"),
+                                        id="tooltip-whatif",
+                                        color="link",
+                                        size="sm",
+                                        className="p-0 ms-2"
+                                    ),
+                                    width="auto"
+                                )
+                            ], align="center", className="g-0")
+                        ]),
+                        dbc.CardBody([
+                            # Removendo a estrutura de abas e mantendo apenas o conteúdo do cenário personalizado
+                            html.Div([
+                                dbc.Row([
+                                    # Variáveis de Simulação - Coluna 1
+                                    dbc.Col([
+                                        html.Div([
+                                            html.I(className="fas fa-tags me-2"),
+                                            "Var. de Preço"
+                                        ], className="whatif-section-title"),
+                                        html.Div([
+                                            html.Div([
+                                                html.Label("Variação de Preço (%)", className="whatif-slider-label"),
+                                                dcc.Slider(
+                                                    id='slider-whatif-preco',
+                                                    min=-50,
+                                                    max=50,
+                                                    value=0,
+                                                    marks={
+                                                        -50: '-50%',
+                                                        -25: '-25%',
+                                                        0: '0%',
+                                                        25: '25%',
+                                                        50: '50%'
+                                                    },
+                                                    tooltip={"placement": "bottom", "always_visible": True},
+                                                    className="whatif-slider"
+                                                )
+                                            ], className="whatif-slider-container"),
+                                            html.Div([
+                                                html.Label("Variação de Promoção (p.p.)", className="whatif-slider-label"),
+                                                dcc.Slider(
+                                                    id='slider-whatif-promo',
+                                                    min=-100,
+                                                    max=100,
+                                                    value=0,
+                                                    marks={
+                                                        -100: '-100',
+                                                        -50: '-50',
+                                                        0: '0',
+                                                        50: '50',
+                                                        100: '100'
+                                                    },
+                                                    tooltip={"placement": "bottom", "always_visible": True},
+                                                    className="whatif-slider"
+                                                )
+                                            ], className="whatif-slider-container")
+                                        ], className="whatif-section")
+                                    ], md=6, className="pe-2"),
+                                    
+                                    # Variáveis de Simulação - Coluna 2
+                                    dbc.Col([
+                                        html.Div([
+                                            html.I(className="fas fa-store me-2"),
+                                            "Var. de Competição"
+                                        ], className="whatif-section-title"),
+                                        html.Div([
+                                            html.Div([
+                                                html.Label("Dist. do Competidor (km)", className="whatif-slider-label"),
+                                                dcc.Slider(
+                                                    id='slider-whatif-comp-dist',
+                                                    min=0,
+                                                    max=10,
+                                                    value=5,
+                                                    marks={
+                                                        0: '0',
+                                                        2: '2',
+                                                        5: '5',
+                                                        8: '8',
+                                                        10: '10'
+                                                    },
+                                                    tooltip={"placement": "bottom", "always_visible": True},
+                                                    className="whatif-slider"
+                                                )
+                                            ], className="whatif-slider-container"),
+                                            html.Div([
+                                                html.Label("Promoção do Competidor (%)", className="whatif-slider-label"),
+                                                dcc.Slider(
+                                                    id='slider-whatif-comp-promo',
+                                                    min=0,
+                                                    max=100,
+                                                    value=0,
+                                                    marks={
+                                                        0: '0%',
+                                                        25: '25%',
+                                                        50: '50%',
+                                                        75: '75%',
+                                                        100: '100%'
+                                                    },
+                                                    tooltip={"placement": "bottom", "always_visible": True},
+                                                    className="whatif-slider"
+                                                )
+                                            ], className="whatif-slider-container")
+                                        ], className="whatif-section")
+                                    ], md=6, className="ps-2"),
+                                ], className="mb-3 g-0"),
+                                
+                                # Variáveis de Sazonalidade
+                                dbc.Row([
+                                    dbc.Col([
+                                        html.Div([
+                                            html.I(className="fas fa-calendar-alt me-2"),
+                                            "Variáveis de Sazonalidade"
+                                        ], className="whatif-section-title"),
+                                        dbc.Row([
+                                            dbc.Col([
+                                                html.Label("Feriados", className="whatif-slider-label"),
+                                                dbc.Checklist(
+                                                    id='check-whatif-feriados',
+                                                    options=[
+                                                        {"label": "Considerar Feriados", "value": 1}
+                                                    ],
+                                                    value=[],
+                                                    switch=True,
+                                                )
+                                            ], width=6, className="pe-2"),
+                                            dbc.Col([
+                                                html.Label("Eventos Especiais", className="whatif-slider-label"),
+                                                dbc.Select(
+                                                    id='select-whatif-eventos',
+                                                    options=[
+                                                        {"label": "Nenhum", "value": "none"},
+                                                        {"label": "Volta às Aulas", "value": "back_to_school"},
+                                                        {"label": "Natal", "value": "christmas"},
+                                                        {"label": "Páscoa", "value": "easter"}
+                                                    ],
+                                                    value="none",
+                                                    size="sm"
+                                                )
+                                            ], width=6, className="ps-2")
+                                        ], className="g-0")
+                                    ], className="whatif-section")
+                                ], className="g-0"),
+                            ], className="mb-3"),
+                            
+                            # Botões de Ação
+                            dbc.Row([
+                                dbc.Col(
+                                    dbc.Button([
+                                        html.I(className="fas fa-play me-2"),
+                                        "Simular"
+                                    ], id="btn-simular-whatif", 
+                                       color="primary",
+                                       size="sm",
+                                       className="btn-whatif w-100"),
+                                    width=6
+                                ),
+                                dbc.Col(
+                                    dbc.Button([
+                                        html.I(className="fas fa-save me-2"),
+                                        "Salvar Cenário"
+                                    ], id="btn-salvar-whatif", 
+                                       color="outline-primary",
+                                       size="sm",
+                                       className="btn-whatif w-100"),
+                                    width=6
+                                )
+                            ], className="mb-3"),
+                            
+                            # Resultados da Simulação
+                            html.Div([
+                                # KPIs Principais
                                 dbc.Row([
                                     dbc.Col([
                                         html.Div("Total Base:", className="small text-muted"),
                                         html.Div(id="kpi-total-base", className="h6")
-                                    ], width=6),
+                                    ], width=4),
                                     dbc.Col([
                                         html.Div("Total Simulado:", className="small text-muted"),
                                         html.Div(id="kpi-total-sim", className="h6")
-                                    ], width=6)
-                                ]),
-                                dbc.Col(
-                                    dcc.Graph(id='grafico-whatif', config={'displayModeBar': False}),
-                                    width=12
-                                )
+                                    ], width=4),
+                                    dbc.Col([
+                                        html.Div("Variação:", className="small text-muted"),
+                                        html.Div(id="kpi-variacao-sim", className="h6")
+                                    ], width=4)
+                                ], className="mb-3"),
+                                
+                                # Gráfico Comparativo
+                                dcc.Graph(id='grafico-whatif', config={'displayModeBar': False}),
+                                
+                                # Insights Automáticos
+                                html.Div(id="insights-whatif", className="mt-3")
+                            ], id="resultados-whatif", style={"display": "none"}),
+                            
+                            # Nova seção: Comparação de Cenários
+                            html.Div([
+                                html.Div([
+                                    html.I(className="fas fa-chart-line me-2"),
+                                    "Comparação de Cenários"
+                                ], className="whatif-section-title mt-4 mb-3"),
+                                html.Div([
+                                    dbc.Row([
+                                        dbc.Col([
+                                            html.Label("Cenários Salvos:", className="whatif-slider-label mb-2"),
+                                            dcc.Dropdown(
+                                                id="dropdown-cenarios",
+                                                multi=True,
+                                                placeholder="Selecione os cenários para comparar",
+                                                className="mb-3"
+                                            )
+                                        ], width=12),
+                                    ]),
+                                    dbc.Row([
+                                        dbc.Col(
+                                            dbc.Button([
+                                                html.I(className="fas fa-chart-line me-2"),
+                                                "Comparar Cenários"
+                                            ], id="btn-comparar-cenarios",
+                                               color="outline-primary",
+                                               size="sm",
+                                               className="btn-whatif w-100"),
+                                            width=6
+                                        ),
+                                        dbc.Col(
+                                            dbc.Button([
+                                                html.I(className="fas fa-trash-alt me-2"),
+                                                "Limpar Cenários"
+                                            ], id="btn-limpar-cenarios",
+                                               color="outline-danger",
+                                               size="sm",
+                                               className="btn-whatif w-100"),
+                                            width=6
+                                        )
+                                    ]),
+                                    html.Div(id="resultados-comparacao", style={"display": "none"}),
+                                    dcc.ConfirmDialog(
+                                        id='confirm-limpar-cenarios',
+                                        message='Você tem certeza que deseja apagar TODOS os cenários salvos? Esta ação não pode ser desfeita.'
+                                    ),
+                                    dcc.Store(id='store-cenarios-update-trigger')
+                                ], className="comparacao-cenarios")
                             ])
                         ])
                     ])

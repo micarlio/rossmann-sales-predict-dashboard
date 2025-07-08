@@ -32,7 +32,7 @@ from dashboard.layouts import (
     criar_layout_analise_lojas,
     criar_layout_analise_3d
 )
-from dashboard.data_loader import carregar_dados, N_AMOSTRAS_PADRAO
+from dashboard.data.data_loader import carregar_dados, N_AMOSTRAS_PADRAO
 from dashboard.callbacks import registrar_callbacks
 
 # ==============================================================================
@@ -104,15 +104,16 @@ def get_layout(pathname, dados):
 # ==============================================================================
 # Configurações de carregamento dos dados
 # ==============================================================================
-modo_carregamento = os.environ.get('MODO_CARREGAMENTO', 'amostra')
+modo_carregamento = os.environ.get('MODO_CARREGAMENTO', 'completo')
 n_amostras = int(os.environ.get('N_AMOSTRAS', '50'))
 data_inicio = os.environ.get('DATA_INICIO', None)
 data_fim = os.environ.get('DATA_FIM', None)
 force_reprocess = os.environ.get('FORCE_REPROCESS', 'False').lower() == 'true'
 
 logger.info(f"Carregando dados no modo '{modo_carregamento}'...")
-logger.info(f"  - Amostras por loja: {n_amostras if modo_carregamento == 'amostra' else 'N/A'}")
-if modo_carregamento == 'data':
+if modo_carregamento == 'amostra':
+    logger.info(f"  - Amostras por loja: {n_amostras}")
+elif modo_carregamento == 'data':
     logger.info(f"  - Intervalo de datas: {data_inicio} a {data_fim if data_fim else 'hoje'}")
 logger.info(f"  - Forçar reprocessamento: {force_reprocess}")
 
@@ -126,7 +127,7 @@ dados = get_cached_data(
 )
 
 # Definir estado inicial para o store (modo e nº amostras)
-initial_store = {'modo': 'amostras', 'n_amostras': 50}
+initial_store = {'modo': 'completo'}
 
 # ==============================================================================
 # Layout do Aplicativo

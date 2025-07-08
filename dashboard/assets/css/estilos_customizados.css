@@ -322,6 +322,8 @@ body {
 }
 
 .dash-dropdown .Select-menu-outer { /* Refatorar para 'dropdown-dash .Select-menu-outer' */
+    z-index: 1050 !important; /* Mantém o menu sempre sobreposto */
+    position: absolute !important; /* Garante que não expanda o painel de filtros */
     border-radius: var(--borda-raio-sm) !important; /* Refatorar variável */
     box-shadow: var(--sombra-leve) !important; /* Refatorar variável */
 }
@@ -421,7 +423,7 @@ body {
 
 /* Zebra stripes mais suaves (classe striped já adiciona, mas ajustamos cor) */
 .table.table-custom.table-striped tbody tr:nth-of-type(odd) {
-    background-color: #f2f4f8;
+    background-color: rgba(245, 247, 250, 0.7);
 }
 
 /* Remover bordas fortes e dar efeito de cartão */
@@ -486,14 +488,17 @@ body {
 
 /* Filtros mais compactos */
 .filtros-compactos {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 0.75rem;
+    background-color: #fff;
     padding: 1rem;
-    background: white;
-    border-radius: 8px;
+    border-radius: var(--borda-raio-sm);
     box-shadow: var(--sombra-leve);
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: flex-end;
+    position: relative;
+    z-index: 10;
 }
 
 .filtro-item {
@@ -549,35 +554,56 @@ body {
 }
 
 .info-panel-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); /* 3 KPIs por linha */
+    display: flex;
+    flex-direction: column;
     gap: 1rem;
-    grid-auto-rows: 1fr; /* Filas com mesma altura */
 }
 
 .info-item {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 0.5rem;
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+}
+
+.info-item::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
     height: 100%;
+    width: 4px;
+    background: linear-gradient(180deg, var(--vermelho-rossmann) 0%, var(--azul-destaque) 100%);
 }
 
-/* Ajuste de listas internas para não quebrar layout */
-.info-item ul {
-    padding-left: 1rem;
-    margin-bottom: 0;
+.info-item p {
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    text-align: center;
 }
 
-.info-item-label {
-    font-size: 0.75rem;
-    color: var(--cinza-neutro);
-    margin-bottom: 0.25rem;
-}
-
-.info-item-value {
-    font-size: 1.1rem;
-    font-weight: 600;
+.info-item h5 {
     color: var(--azul-escuro);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    text-align: center;
+}
+
+/* Cores para valores positivos e negativos */
+.info-item h5.text-success {
+    color: var(--verde-destaque) !important;
+}
+
+.info-item h5.text-danger {
+    color: var(--vermelho-rossmann) !important;
 }
 
 /* ====================  Refinamentos de Elegância  ==================== */
@@ -688,4 +714,329 @@ body {
 /* Hide Plotly modebar background for cleaner look */
 .js-plotly-plot .modebar {
     background: transparent !important;
+}
+
+/* Estilos para o simulador What-If */
+.whatif-section {
+    padding: 1rem 0;
+    border-bottom: 1px solid rgba(94, 103, 111, 0.1);
+    margin-bottom: 1rem;
+}
+
+.whatif-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+/* Título das seções */
+.whatif-section-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--azul-escuro);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.whatif-section-title i {
+    color: var(--vermelho-rossmann);
+    font-size: 0.85rem;
+}
+
+/* Container dos sliders */
+.whatif-slider-container {
+    margin-bottom: 1.5rem;
+    padding: 0.5rem;
+    background: var(--fundo-cinza-claro);
+    border-radius: var(--borda-raio-sm);
+}
+
+.whatif-slider-container:last-child {
+    margin-bottom: 0;
+}
+
+/* Labels dos sliders */
+.whatif-slider-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--cinza-neutro);
+    margin-bottom: 0.75rem;
+    display: block;
+}
+
+/* Estilização dos sliders */
+.whatif-slider .rc-slider-rail {
+    background-color: rgba(94, 103, 111, 0.1);
+    height: 4px;
+}
+
+.whatif-slider .rc-slider-track {
+    background-color: var(--vermelho-rossmann);
+    height: 4px;
+}
+
+.whatif-slider .rc-slider-handle {
+    border: 2px solid var(--vermelho-rossmann);
+    background-color: white;
+    width: 16px;
+    height: 16px;
+    margin-top: -6px;
+    box-shadow: 0 2px 4px rgba(227, 0, 27, 0.2);
+    transition: all 0.2s ease;
+}
+
+.whatif-slider .rc-slider-handle:hover,
+.whatif-slider .rc-slider-handle:active {
+    border-color: var(--vermelho-rossmann);
+    box-shadow: 0 0 0 4px rgba(227, 0, 27, 0.15);
+    transform: scale(1.1);
+}
+
+.whatif-slider .rc-slider-mark {
+    margin-top: 10px;
+}
+
+.whatif-slider .rc-slider-mark-text {
+    color: var(--cinza-neutro);
+    font-size: 0.75rem;
+}
+
+.whatif-slider .rc-slider-mark-text-active {
+    color: var(--azul-escuro);
+    font-weight: 500;
+}
+
+/* Estilização das abas */
+#tabs-whatif .nav-tabs {
+    border-bottom: 2px solid #dee2e6;
+    justify-content: center;
+    display: flex;
+    width: 100%;
+    flex-wrap: nowrap;
+}
+
+#tabs-whatif .nav-link {
+    color: var(--cinza-neutro);
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+#tabs-whatif .nav-link:hover {
+    color: var(--azul-escuro);
+    border-bottom: 2px solid rgba(227, 0, 27, 0.3);
+}
+
+#tabs-whatif .nav-link.active {
+    color: var(--vermelho-rossmann);
+    font-weight: 600;
+    border-bottom: 2px solid var(--vermelho-rossmann);
+}
+
+/* Estilização dos checkboxes e selects */
+.whatif-section .form-check {
+    margin-bottom: 0.5rem;
+}
+
+.whatif-section .form-check-input:checked {
+    background-color: var(--vermelho-rossmann);
+    border-color: var(--vermelho-rossmann);
+}
+
+.whatif-section .form-select {
+    border-color: rgba(94, 103, 111, 0.2);
+    font-size: 0.9rem;
+}
+
+/* Estilização dos resultados */
+#resultados-whatif {
+    background: var(--fundo-cinza-claro);
+    border-radius: var(--borda-raio-sm);
+    padding: 1.25rem;
+    margin-top: 1.5rem;
+}
+
+#resultados-whatif .h6 {
+    color: var(--azul-escuro);
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+#insights-whatif {
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+#insights-whatif i {
+    color: var(--vermelho-rossmann);
+    margin-right: 0.5rem;
+}
+
+/* Estilização dos cenários pré-definidos */
+#radio-whatif-presets {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+#radio-whatif-presets .form-check {
+    margin: 0;
+    padding: 0;
+}
+
+#radio-whatif-presets .form-check-input {
+    display: none;
+}
+
+#radio-whatif-presets .form-check-label {
+    padding: 0.5rem 1rem;
+    border: 1px solid rgba(94, 103, 111, 0.2);
+    border-radius: var(--borda-raio-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+#radio-whatif-presets .form-check-input:checked + .form-check-label {
+    background-color: var(--vermelho-rossmann);
+    color: white;
+    border-color: var(--vermelho-rossmann);
+}
+
+#desc-cenario-preset {
+    background: var(--fundo-cinza-claro);
+    padding: 1rem;
+    border-radius: var(--borda-raio-sm);
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+/* Estilização dos botões de ação */
+.btn-whatif {
+    font-weight: 500;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+}
+
+.btn-whatif i {
+    font-size: 0.9rem;
+}
+
+/* Estilo para botões primary */
+.btn-primary.btn-whatif {
+    background-color: var(--azul-escuro);
+    border-color: var(--azul-escuro);
+    color: white;
+}
+
+.btn-primary.btn-whatif:hover {
+    background-color: var(--azul-destaque);
+    border-color: var(--azul-destaque);
+    color: white;
+    box-shadow: 0 2px 5px rgba(0, 35, 70, 0.3);
+    transform: translateY(-1px);
+}
+
+/* Estilo para botões outline-primary */
+.btn-outline-primary.btn-whatif {
+    color: var(--azul-escuro);
+    border-color: var(--azul-escuro);
+    background-color: white;
+}
+
+.btn-outline-primary.btn-whatif:hover {
+    background-color: var(--azul-escuro);
+    color: white;
+    border-color: var(--azul-escuro);
+    box-shadow: 0 2px 5px rgba(0, 35, 70, 0.3);
+    transform: translateY(-1px);
+}
+
+/* Estilo para botões outline-danger */
+.btn-outline-danger.btn-whatif {
+    color: var(--vermelho-rossmann);
+    border-color: var(--vermelho-rossmann);
+    background-color: white;
+}
+
+.btn-outline-danger.btn-whatif:hover {
+    background-color: var(--vermelho-rossmann);
+    color: white;
+    border-color: var(--vermelho-rossmann);
+    box-shadow: 0 2px 5px rgba(227, 0, 27, 0.3);
+    transform: translateY(-1px);
+}
+
+/* Estilização da comparação de cenários */
+.comparacao-cenarios {
+    border-top: 1px solid rgba(94, 103, 111, 0.1);
+    padding-top: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.comparacao-cenarios h6 {
+    font-family: 'Poppins', sans-serif;
+    color: var(--azul-escuro);
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+#dropdown-cenarios {
+    margin-bottom: 1rem;
+}
+
+/* Toast de feedback */
+.toast {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1050;
+}
+
+/* Tooltip */
+.tooltip {
+    z-index: 1070;
+}
+
+/* Estilo para o painel de informações */
+.info-card {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 0.75rem;
+    height: 100%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.info-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+}
+
+.info-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #212529;
+}
+
+.info-panel-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }

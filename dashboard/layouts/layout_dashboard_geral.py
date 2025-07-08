@@ -2,7 +2,7 @@ import dash_bootstrap_components as dbc
 from dash import dcc, html
 
 from .componentes_compartilhados import criar_card_filtros, criar_card_grafico
-from ..utils import criar_icone_informacao
+from ..core.utils import criar_icone_informacao
 
 def criar_layout_dashboard_analise(dados):
     nome_pagina = "dashboard"

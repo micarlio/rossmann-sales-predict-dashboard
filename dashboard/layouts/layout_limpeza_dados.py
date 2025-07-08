@@ -4,8 +4,8 @@ import plotly.express as px
 import pandas as pd
 
 from .componentes_compartilhados import criar_botoes_cabecalho # Refatorar nome do módulo e da função
-from ..config import VERMELHO_ROSSMANN, FUNDO_CINZA_CLARO, AZUL_ESCURO, CINZA_NEUTRO
-from ..data_loader import CAMINHO_ARQUIVO_LOJAS_BRUTO, reduzir_uso_memoria  # para análise de valores ausentes e memória
+from ..core.config import VERMELHO_ROSSMANN, FUNDO_CINZA_CLARO, AZUL_ESCURO, CINZA_NEUTRO
+from ..data.data_loader import CAMINHO_ARQUIVO_LOJAS_BRUTO, reduzir_uso_memoria  # para análise de valores ausentes e memória
 
 def criar_layout_limpeza_dados(dados): # Refatorar nome da função e parâmetro
     nome_pagina = "limpeza" # Refatorar nome da variável
@@ -63,7 +63,11 @@ def criar_layout_limpeza_dados(dados): # Refatorar nome da função e parâmetro
     mem_otimizado = df_lojas_otimizado.memory_usage(deep=True).sum() / 1024**2
     red_pct = (1 - mem_otimizado / mem_bruto) * 100
     raw_dist = df_lojas_bruto['CompetitionDistance'].dropna()
-    tratado_dist = dados['df_lojas_tratado']['CompetitionDistance']
+    # Pode ocorrer de o cache antigo ainda não conter a coluna – fazemos fallback seguro
+    if 'df_lojas_tratado' in dados and 'CompetitionDistance' in dados['df_lojas_tratado'].columns:
+        tratado_dist = dados['df_lojas_tratado']['CompetitionDistance']
+    else:
+        tratado_dist = pd.Series(dtype=float)
     df_hist = pd.DataFrame({
         'CompetitionDistance': pd.concat([raw_dist, tratado_dist], ignore_index=True),
         'Status': ['Bruto'] * len(raw_dist) + ['Tratado'] * len(tratado_dist)
@@ -83,32 +87,6 @@ def criar_layout_limpeza_dados(dados): # Refatorar nome da função e parâmetro
             html.H1("Processo de Limpeza e Pré-processamento", className="page-title"),
             criar_botoes_cabecalho(nome_pagina) # Usar nova função e variável refatorada
         ], className="d-flex justify-content-between align-items-center mb-4"),
-        # Controles de Limpeza e Amostragem
-        html.Div([
-            html.H3("Controles de Limpeza e Amostragem", style={'borderLeft': f'5px solid {VERMELHO_ROSSMANN}', 'paddingLeft': '10px'}),
-            html.Div([
-                dcc.RadioItems(
-                    id='seletor-modo-dados',
-                    options=[
-                        {'label': 'Dataset Completo (Limpo)', 'value': 'completo'},
-                        {'label': 'Amostras por Loja', 'value': 'amostras'},
-                    ],
-                    value='amostras',
-                    labelStyle={'display': 'inline-block', 'margin-right': '20px'}
-                ),
-                html.Div(id='container-input-amostras', children=[
-                    dcc.Input(
-                        id='input-numero-amostras',
-                        type='number',
-                        placeholder='Nº de amostras por loja',
-                        value=50,
-                        min=1,
-                        step=1,
-                    ),
-                    html.Span("Atualização automática", style={'marginLeft': '10px', 'color': AZUL_ESCURO, 'fontStyle': 'italic'})
-                ], style={'display': 'none', 'marginTop': '10px'})
-            ], style={'padding': '10px', 'border': f'1px solid {FUNDO_CINZA_CLARO}', 'borderRadius': '5px', 'marginBottom': '20px'})
-        ], className='mb-4'),
         dbc.Card([
             dbc.CardBody([
                 dcc.Markdown(f"""

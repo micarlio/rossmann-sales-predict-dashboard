@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 
 from .componentes_compartilhados import criar_botoes_cabecalho # Refatorar nome do módulo e da função
-from ..utils import criar_figura_vazia # Refatorar nome do módulo e da função
-from ..config import (
+from ..core.utils import criar_figura_vazia
+from ..core.config import (
     VERMELHO_ROSSMANN, CINZA_NEUTRO, COLUNAS_NUMERICAS_VENDAS, # Importar novas constantes
     COLUNAS_NUMERICAS_LOJAS_PARA_PLOTAR # Importar novas constantes
 )

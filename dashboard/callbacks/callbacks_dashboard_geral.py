@@ -5,8 +5,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
 
-from ..utils import criar_figura_vazia, filtrar_dataframe, parse_json_to_df
-from ..config import (
+from ..core.utils import criar_figura_vazia, filtrar_dataframe, parse_json_to_df
+from ..core.config import (
     VERMELHO_ROSSMANN, AZUL_ESCURO, CINZA_NEUTRO, AZUL_DESTAQUE, VERDE_DESTAQUE,
     PALETA_CORES_GRAFICO, MAPEAMENTO_DIAS_SEMANA, ORDEM_DIAS_SEMANA,
     ALTURA_GRAFICO, ALTURA_GRAFICO_LARGURA_TOTAL

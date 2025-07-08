@@ -2,9 +2,9 @@
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 import pandas as pd
-from ..data_loader import carregar_dados_brutos
+from ..data.data_loader import carregar_dados_brutos
 
-from ..config import VERMELHO_ROSSMANN, AZUL_ESCURO, FUNDO_CINZA_CLARO, BRANCO_NEUTRO, AZUL_DESTAQUE, VERDE_DESTAQUE, AMARELO_DESTAQUE, PALETA_CORES_GRAFICO, CINZA_NEUTRO
+from ..core.config import VERMELHO_ROSSMANN, AZUL_ESCURO, FUNDO_CINZA_CLARO, BRANCO_NEUTRO, AZUL_DESTAQUE, VERDE_DESTAQUE, AMARELO_DESTAQUE, PALETA_CORES_GRAFICO, CINZA_NEUTRO
 
 def criar_layout_contextualizacao(dados):
     # Carrega datasets brutos para contextualização

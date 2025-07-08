@@ -7,8 +7,8 @@ import plotly.express as px
 from io import StringIO
 import numpy as np
 
-from ..utils import criar_figura_vazia, filtrar_dataframe_para_3d, parse_json_to_df # Importar as funções utilitárias refatoradas
-from ..config import VERMELHO_ROSSMANN, AZUL_ESCURO, CINZA_NEUTRO, PALETA_CORES_GRAFICO, MAPEAMENTO_DIAS_SEMANA, ORDEM_DIAS_SEMANA # Importar as novas constantes
+from ..core.utils import criar_figura_vazia, filtrar_dataframe_para_3d, parse_json_to_df
+from ..core.config import VERMELHO_ROSSMANN, AZUL_ESCURO, CINZA_NEUTRO, PALETA_CORES_GRAFICO, MAPEAMENTO_DIAS_SEMANA, ORDEM_DIAS_SEMANA
 
 def registrar_callbacks_analise_3d(aplicativo, dados):
     """

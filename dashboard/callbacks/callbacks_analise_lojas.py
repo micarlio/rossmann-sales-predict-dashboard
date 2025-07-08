@@ -9,10 +9,11 @@ import statsmodels.api as sm
 from io import StringIO
 import json
 
-from ..utils import criar_figura_vazia, filtrar_dataframe # Importar as funções utilitárias refatoradas
-from ..data_loader import get_principal_dataset, N_AMOSTRAS_PADRAO
-from ..config import VERMELHO_ROSSMANN, AZUL_ESCURO, CINZA_NEUTRO, MAPEAMENTO_DIAS_SEMANA, ORDEM_DIAS_SEMANA # Importar as novas constantes
-from ..config import AZUL_DESTAQUE, PALETA_CORES_GRAFICO # Importar as novas constantes
+from ..core.utils import criar_figura_vazia, filtrar_dataframe
+from ..core.config import (
+    VERMELHO_ROSSMANN, AZUL_ESCURO, CINZA_NEUTRO, MAPEAMENTO_DIAS_SEMANA,
+    ORDEM_DIAS_SEMANA, AZUL_DESTAQUE, PALETA_CORES_GRAFICO)
+from ..data.data_loader import get_principal_dataset, N_AMOSTRAS_PADRAO
 
 # Função auxiliar para deserializar o DataFrame do JSON
 def deserializar_df(store_data):

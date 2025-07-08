@@ -6,9 +6,9 @@ import numpy as np
 import statsmodels.api as sm
 import pandas as pd
 
-from ..utils import criar_figura_vazia, parse_json_to_df # Importar as funções utilitárias refatoradas
-from ..config import VERMELHO_ROSSMANN, CINZA_NEUTRO, AZUL_DESTAQUE # Importar as novas constantes
-from ..data_loader import get_data_states
+from ..core.utils import criar_figura_vazia, parse_json_to_df
+from ..core.config import VERMELHO_ROSSMANN, CINZA_NEUTRO, AZUL_DESTAQUE
+from ..data.data_loader import get_data_states
 
 LAYOUT_GRAFICO_COMUM = { # Refatorar nome da constante
     'title_x': 0.5,

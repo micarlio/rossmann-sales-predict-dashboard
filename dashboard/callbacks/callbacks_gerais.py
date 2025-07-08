@@ -3,8 +3,8 @@ from dash import Input, Output, html, dcc, State, callback, ctx
 import dash
 import pandas as pd
 
-from ..config import AZUL_DESTAQUE, VERDE_DESTAQUE, DESCRICOES_COLUNAS # Importar DESCRICOES_COLUNAS
-from ..utils import filtrar_dataframe
+from ..core.config import AZUL_DESTAQUE, VERDE_DESTAQUE, DESCRICOES_COLUNAS # Importar DESCRICOES_COLUNAS
+from ..core.utils import filtrar_dataframe
 
 def registrar_callbacks_gerais(aplicativo, dados):
     df_principal = dados["df_principal"]
