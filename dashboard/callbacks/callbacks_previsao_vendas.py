@@ -1,32 +1,27 @@
+
 # dashboard/callbacks/callbacks_previsao_vendas.py
 
-from dash.dependencies import Input, Output, State, ALL
+from dash.dependencies import Input, Output, State
 from dash import dcc, html, no_update
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.graph_objects as go
-import pickle
 import os
 from io import StringIO
 from prophet import Prophet
 # Ajuste de performance: cache para Prophet até horizonte fixo
-MAX_HORIZON = 90
+MAX_HORIZON = 365  # 52 semanas (1 ano)
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import numpy as np
 import functools
-from sklearn.ensemble import RandomForestRegressor
 import dash
-import plotly.io as pio
-from xgboost import XGBRegressor
-from lightgbm import LGBMRegressor
 import logging
 import json
 from datetime import datetime
 import glob
 from plotly.subplots import make_subplots
 
-from ..data.data_loader import carregar_dados, get_principal_dataset, filtrar_por_data
-from ..core.utils import criar_figura_vazia, parse_json_to_df
+from ..core.utils import criar_figura_vazia, parse_json_to_df, criar_icone_informacao
 from ..core.forecast_utils import train_and_forecast
 
 # Cache para modelos treinados
@@ -117,13 +112,16 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
     # Toggle collapse do painel de filtros
     @aplicativo.callback(
         Output('collapse-filtros', 'is_open'),
+        Output('icone-toggle-filtros', 'className'),
         Input('btn-toggle-filtros', 'n_clicks'),
         State('collapse-filtros', 'is_open')
     )
     def toggle_collapse_filtros(n, is_open):
         if n:
-            return not is_open
-        return is_open
+            novo_estado = not is_open
+            novo_icone = "fas fa-chevron-down" if novo_estado else "fas fa-chevron-up"
+            return novo_estado, novo_icone
+        return is_open, "fas fa-chevron-up"
 
     # Callback para popular dropdown de lojas
     @aplicativo.callback(
@@ -153,40 +151,11 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
         if not tipos_selecionados:
             return ['todos']
 
-        # Se 'todos' foi selecionado, desmarque os outros
         if 'todos' in tipos_selecionados and len(tipos_selecionados) > 1:
-            # Se o último selecionado foi 'todos'
-            if dash.callback_context.triggered[0]['value'][-1] == 'todos':
-                return ['todos']
-            # Se um tipo específico foi selecionado enquanto 'todos' estava marcado
-            else:
-                return [t for t in tipos_selecionados if t != 'todos']
-        
-        return tipos_selecionados
+            ultimo = dash.callback_context.triggered[0]['value'][-1]
+            return ['todos'] if ultimo == 'todos' else [t for t in tipos_selecionados if t != 'todos']
 
-    # Toggle de exibição dos parâmetros avançados conforme modelo
-    @aplicativo.callback(
-        Output('parametros-arima','style'),
-        Output('parametros-xgboost','style'),
-        Output('parametros-lightgbm','style'),
-        Output('parametros-ensemble','style'),
-        Input('dropdown-modelo-previsao', 'value')
-    )
-    def toggle_params_modelo(modelo):
-        hidden = {'display':'none'}
-        arima_style = hidden.copy()
-        xgb_style = hidden.copy()
-        lgbm_style = hidden.copy()
-        ens_style = hidden.copy()
-        if modelo == 'arima':
-            arima_style = {'display':'block','marginBottom':'20px'}
-        elif modelo == 'xgboost':
-            xgb_style = {'display':'block','marginBottom':'20px'}
-        elif modelo == 'lightgbm':
-            lgbm_style = {'display':'block','marginBottom':'20px'}
-        elif modelo == 'ensemble':
-            ens_style = {'display':'block','marginBottom':'20px'}
-        return arima_style, xgb_style, lgbm_style, ens_style
+        return tipos_selecionados
 
     # Callback principal de previsão (REVERTIDO E REFATORADO)
     @aplicativo.callback(
@@ -200,21 +169,16 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
             Input('radio-metrica-previsao', 'value'),
             Input('slider-horizonte-previsao', 'value'),
             Input('dropdown-granularidade-previsao', 'value'),
-            Input('dropdown-modelo-previsao', 'value'),
             Input('dropdown-tipo-loja', 'value'),
             Input('dropdown-lojas-previsao', 'value'),
             Input('dropdown-promocao', 'value'),
             Input('checklist-dias-semana', 'value'),
             Input('armazenamento-df-principal', 'data')
-        ],
-        [
-            State('xgb-estimators','value'), State('xgb-lr','value'), State('lgbm-estimators','value'),
         ]
     )
-    def gerar_previsao(target, horizonte, granularidade, modelo,
-                       tipo_loja, lojas, promocao, dias_semana, store_data,
-                       xgb_estimators, xgb_lr, lgbm_estimators):
-        logger.info(f"Callback de previsão iniciado. Modelo: {modelo}, Tipos: {tipo_loja}, Lojas: {lojas}")
+    def gerar_previsao(target, horizonte, granularidade, 
+                       tipo_loja, lojas, promocao, dias_semana, store_data):
+        logger.info(f"Callback de previsão iniciado. Modelo: prophet, Tipos: {tipo_loja}, Lojas: {lojas}")
         
         df = deserializar_df(store_data)
         if df is None:
@@ -233,19 +197,11 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
             logger.warning("DataFrame filtrado está vazio")
             return criar_figura_vazia("Sem dados após aplicação dos filtros"), [], html.Div(), None, None, None
 
-        # Seleção de métrica conforme escolha do usuário
-        if target == 'Sales':
-            col = 'Sales'
-            metrica_nome = 'Vendas'
-        elif target == 'Customers':
-            col = 'Customers'
-            metrica_nome = 'Clientes'
-        elif target == 'SalesPerCustomer':
-            col = 'TicketMedio' # A coluna será criada abaixo
-            metrica_nome = 'Ticket Médio'
-        else: # Default para 'Sales'
-            col = 'Sales'
-            metrica_nome = 'Vendas'
+        col, metrica_nome = {
+            'Sales': ('Sales', 'Vendas'),
+            'Customers': ('Customers', 'Clientes'),
+            'SalesPerCustomer': ('TicketMedio', 'Ticket Médio'),
+        }.get(target, ('Sales', 'Vendas'))
             
         # Preparar série temporal conforme granularidade
         df_agrupado = df_filtrado.set_index('Date')
@@ -281,8 +237,8 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
                 ts = ts_raw
 
             if ts.empty or len(ts) < 10:
-                logger.warning(f"Dados insuficientes para o modelo {modelo}")
-                return criar_figura_vazia(f"Dados insuficientes para o modelo {modelo}"), [], html.Div(), None, None, None
+                logger.warning(f"Dados insuficientes para o modelo prophet")
+                return criar_figura_vazia(f"Dados insuficientes para o modelo prophet"), [], html.Div(), None, None, None
                 
             logger.info(f"Série temporal preparada com sucesso: {len(ts)} pontos")
             
@@ -333,7 +289,7 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
             cache_key = (
                 tuple(sorted(lojas)) if lojas else tuple(sorted(tipo_loja)) if tipo_loja else 'ALL',
                 target,
-                modelo,
+                'prophet',
                 horizonte,
                 ts['ds'].max(),
                 'no_sunday' if flag_excluir_domingo else 'with_sunday'
@@ -347,10 +303,8 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
                     forecast, pred_train, deviation_count, model_name_display = train_and_forecast(
                         ts,
                         future_dates,
-                        modelo,
-                        holidays=holidays,
-                        xgb_params={'n_estimators': xgb_estimators, 'learning_rate': xgb_lr},
-                        lgbm_params={'n_estimators': lgbm_estimators}
+                        'prophet',
+                        holidays=holidays
                     )
                     # Armazena a previsão completa no cache
                     MODEL_CACHE[cache_key] = (forecast, pred_train, deviation_count, model_name_display)
@@ -428,7 +382,11 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
             data_inicio_visual = ts_plot['ds'].max() - pd.DateOffset(months=2)
             data_fim_visual = forecast_plot['ds'].max()
 
-            fig.update_layout(xaxis_rangeslider=dict(visible=True))
+            fig.update_layout(
+                height=400,
+                xaxis_rangeslider_visible=True,
+                xaxis_rangeslider_thickness=0.1
+            )
             fig.update_xaxes(range=[data_inicio_visual, data_fim_visual])
 
             # Previsão
@@ -446,7 +404,7 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
                 ))
 
             fig.update_layout(
-                title=f'Previsão de {metrica_nome} com {model_name_display} ({granularidade.capitalize()})',
+                title=f'Previsão de {metrica_nome}',
                 xaxis_title='Data', 
                 yaxis_title=metrica_nome,
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
@@ -602,27 +560,43 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
             top_weekday = mapping.get(int(dias_media.idxmax()), '') if not dias_media.empty else ''
             
             # Adicionar informação do horizonte em semanas
+            desc_map = {
+                "Total Previsto": "Soma das previsões de vendas para todo o horizonte selecionado.",
+                "Média Prevista": "Média diária das vendas previstas no período.",
+                "Variação vs. Hist. (%)": "Diferença percentual entre a média prevista e a média histórica do mesmo período.",
+                "Variação Acumulada (%)": "Crescimento percentual da primeira até a última previsão no horizonte.",
+                "Melhor Dia da Semana": "Dia da semana cuja média de vendas previstas é a mais alta no horizonte.",
+            }
+
             items = [
-                (total_prev_label, format_currency(total_prev, metrica_selecionada)),
-                ("Variação vs. Hist. (%)", f"{var_perc:,.2f}%", "text-success" if var_perc>=0 else "text-danger"),
-                ("Variação Acumulada (%)", f"{var_acum:,.2f}%", "text-success" if var_acum>=0 else "text-danger"),
-                ("Melhor Dia da Semana", top_weekday),
+                (total_prev_label, format_currency(total_prev, metrica_selecionada), None, desc_map.get(total_prev_label, "")),
+                ("Variação vs. Hist. (%)", f"{var_perc:,.2f}%", "text-success" if var_perc>=0 else "text-danger", desc_map["Variação vs. Hist. (%)"]),
+                ("Variação Acumulada (%)", f"{var_acum:,.2f}%", "text-success" if var_acum>=0 else "text-danger", desc_map["Variação Acumulada (%)"]),
+                ("Melhor Dia da Semana", top_weekday, None, desc_map["Melhor Dia da Semana"]),
             ]
-            # Adiciona Média Prevista apenas se não for Ticket Médio
             if metrica_selecionada != 'SalesPerCustomer':
-                items.insert(1, ("Média Prevista", format_currency(media_prev, metrica_selecionada)))
+                items.insert(1, ("Média Prevista", format_currency(media_prev, metrica_selecionada), None, desc_map["Média Prevista"]))
 
             items_divs = []
-            for item in items:
-                titulo = item[0]
-                valor = item[1]
-                estilo_valor = "fw-bold " + (item[2] if len(item) > 2 else "")
-                
+            for idx, item in enumerate(items):
+                titulo, valor, classe_extra, tooltip_text = item
+                estilo_valor = "fw-bold " + (classe_extra if classe_extra else "")
+
+                tooltip_id = f"kpi-tooltip-{idx}"
+
                 items_divs.append(
                     html.Div([
-                        html.P(titulo, className="text-muted mb-1 small"),
-                        html.H5(valor, className=estilo_valor)
-                    ], className="info-item")
+                        # Ícone posicionado no canto superior esquerdo
+                        html.Span(
+                            criar_icone_informacao(tooltip_id, tooltip_text),
+                            className="position-absolute top-0 start-0 ms-2 mt-2"
+                        ),
+                        # Conteúdo centralizado
+                        html.Div([
+                            html.P(titulo, className="text-muted mb-1 small"),
+                            html.H5(valor, className=estilo_valor)
+                        ], className="d-flex flex-column align-items-center justify-content-center h-100")
+                    ], className="info-item position-relative", style={"min-height": "90px"})
                 )
 
             return html.Div(items_divs, className="info-panel-grid")
@@ -634,453 +608,6 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
     # ==================================================================
 
     # Callback para gráficos adicionais substituído por uma nova versão abaixo
-
-    # ==================================================================
-    # SIMULADOR WHAT-IF
-    # ==================================================================
-
-    # Callback principal do What-If
-    @aplicativo.callback(
-        Output('grafico-whatif', 'figure'),
-        Output('kpi-total-base', 'children'),
-        Output('kpi-total-sim', 'children'),
-        Output('kpi-variacao-sim', 'children'),
-        Output('insights-whatif', 'children'),
-        Output('resultados-whatif', 'style'),
-        Input('btn-simular-whatif', 'n_clicks'),
-        [
-            State('slider-whatif-preco', 'value'),
-            State('slider-whatif-promo', 'value'),
-            State('slider-whatif-comp-dist', 'value'),
-            State('slider-whatif-comp-promo', 'value'),
-            State('check-whatif-feriados', 'value'),
-            State('select-whatif-eventos', 'value'),
-            State('grafico-previsao', 'figure')
-        ],
-        prevent_initial_call=True
-    )
-    def simular_whatif(n_clicks, delta_preco_pct, delta_promo_pp, 
-                      comp_dist, comp_promo, feriados, eventos, fig_previsao):
-        if not fig_previsao or 'data' not in fig_previsao or len(fig_previsao['data']) < 2:
-            fig_placeholder = go.Figure()
-            fig_placeholder.update_layout(template='plotly_white', xaxis_visible=False, yaxis_visible=False,
-                                          annotations=[dict(text="Gere a previsão primeiro", showarrow=False)])
-            return fig_placeholder, "-", "-", "-", "", {"display": "none"}
-
-        # Dados base
-        fc_x = pd.to_datetime(fig_previsao['data'][1]['x'])
-        fc_y = np.array(fig_previsao['data'][1]['y'], dtype=float)
-
-        # Fatores de ajuste por variável
-        fator_preco = 1 + (ELASTIC_PRICE * (delta_preco_pct / 100))
-        fator_promo = 1 + (ELASTIC_PROMO * (delta_promo_pp / 100))
-        fator_comp_dist = 1 + (ELASTIC_COMP_DIST * ((comp_dist - 5) / 10))  # 5km é o baseline
-        fator_comp_promo = 1 + (ELASTIC_COMP_PROMO * (comp_promo / 100))
-
-        # Ajuste por eventos especiais
-        fator_eventos = {
-            "none": 1.0,
-            "back_to_school": 1.15,
-            "christmas": 1.3,
-            "easter": 1.2
-        }.get(eventos, 1.0)
-
-        # Ajuste por feriados
-        fator_feriados = 1.1 if feriados else 1.0
-
-        # Ajuste final combinado
-        ajuste = (fator_preco * fator_promo * fator_comp_dist * fator_comp_promo * 
-                 fator_eventos * fator_feriados)
-
-        y_sim = fc_y * ajuste
-
-        # Gráfico comparativo
-        fig_sim = go.Figure()
-        fig_sim.add_trace(go.Scatter(x=fc_x, y=fc_y, name='Base', mode='lines', 
-                                   line=dict(color='#1f77b4')))
-        fig_sim.add_trace(go.Scatter(x=fc_x, y=y_sim, name='Cenário', mode='lines', 
-                                   line=dict(color='#ff7f0e')))
-        
-        # Área entre as curvas
-        fig_sim.add_trace(go.Scatter(
-            x=fc_x.tolist() + fc_x.tolist()[::-1],
-            y=y_sim.tolist() + fc_y.tolist()[::-1],
-            fill='tonexty',
-            fillcolor='rgba(255,127,14,0.2)',
-            line=dict(width=0),
-            showlegend=False
-        ))
-        
-        fig_sim.update_layout(
-            template='plotly_white',
-            xaxis_title='Data',
-            yaxis_title='Vendas Previstas',
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-        )
-
-        # Cálculos dos KPIs
-        total_base = fc_y.sum()
-        total_sim = y_sim.sum()
-        var_pct = ((total_sim / total_base) - 1) * 100
-
-        
-
-        # Gerar insights automáticos
-        insights = []
-        
-        # Insight de variação geral
-        if var_pct > 0:
-            insights.append(html.Div([
-                html.I(className="fas fa-arrow-up text-success me-2"),
-                f"Aumento projetado de {var_pct:.1f}% nas vendas"
-            ], className="mb-2"))
-        else:
-            insights.append(html.Div([
-                html.I(className="fas fa-arrow-down text-danger me-2"),
-                f"Redução projetada de {abs(var_pct):.1f}% nas vendas"
-            ], className="mb-2"))
-
-        # Análise de sensibilidade
-        impactos = {
-            'Preço': ELASTIC_PRICE * delta_preco_pct,
-            'Promoção': ELASTIC_PROMO * delta_promo_pp,
-            'Dist. Competidor': ELASTIC_COMP_DIST * (comp_dist - 5),
-            'Promo Competidor': ELASTIC_COMP_PROMO * comp_promo
-        }
-        maior_impacto = max(impactos.items(), key=lambda x: abs(x[1]))
-        insights.append(html.Div([
-            html.I(className="fas fa-chart-line me-2"),
-            f"Maior impacto: {maior_impacto[0]} ({maior_impacto[1]:.1f}%)"
-        ], className="mb-2"))
-
-        # Alertas de risco
-        if abs(var_pct) > 50:
-            insights.append(html.Div([
-                html.I(className="fas fa-exclamation-triangle text-warning me-2"),
-                "Atenção: Variação muito expressiva, revise os parâmetros"
-            ], className="mb-2"))
-
-        # Recomendações
-        if delta_preco_pct > 0 and delta_promo_pp < 0:
-            insights.append(html.Div([
-                html.I(className="fas fa-lightbulb text-primary me-2"),
-                "Considere aumentar promoções para compensar aumento de preço"
-            ], className="mb-2"))
-
-        insights_div = html.Div([
-            html.H6("Insights", className="mb-3"),
-            html.Div(insights)
-        ])
-
-        return (
-            fig_sim,
-            format_currency(total_base),
-            format_currency(total_sim),
-            f"{var_pct:+.1f}%" if var_pct != 0 else "0%",
-            insights_div,
-            {"display": "block"}
-        )
-
-    # Callback para abrir o modal de salvar cenário
-    @aplicativo.callback(
-        Output("modal-salvar-cenario", "is_open"),
-        [
-            Input("btn-salvar-whatif", "n_clicks"),
-            Input("btn-cancelar-salvar-cenario", "n_clicks"),
-            Input("btn-confirmar-salvar-cenario", "n_clicks")
-        ],
-        [State("modal-salvar-cenario", "is_open")]
-    )
-    def toggle_modal_salvar_cenario(n1, n2, n3, is_open):
-        if n1 or n2 or n3:
-            return not is_open
-        return is_open
-
-    # Callback para salvar o cenário
-    @aplicativo.callback(
-        [
-            Output("toast-feedback-cenario", "is_open"),
-            Output("toast-feedback-cenario", "children"),
-            Output("toast-feedback-cenario", "header"),
-            Output("input-nome-cenario", "value")
-        ],
-        Input("btn-confirmar-salvar-cenario", "n_clicks"),
-        [
-            State("input-nome-cenario", "value"),
-            State("slider-whatif-preco", "value"),
-            State("slider-whatif-promo", "value"),
-            State("slider-whatif-comp-dist", "value"),
-            State("slider-whatif-comp-promo", "value"),
-            State("check-whatif-feriados", "value"),
-            State("select-whatif-eventos", "value")
-        ],
-        prevent_initial_call=True
-    )
-    def salvar_cenario(n_clicks, nome_cenario, delta_preco_pct, delta_promo_pp, 
-                       comp_dist, comp_promo, feriados, eventos):
-        if not n_clicks:
-            return False, "", "", ""
-            
-        if not nome_cenario:
-            return True, "Por favor, forneça um nome para o cenário", "Erro", ""
-            
-        # Prepara os dados do cenário
-        dados_cenario = {
-            "descricao": nome_cenario,
-            "data_criacao": datetime.now().strftime("%Y%m%d_%H%M%S"),
-            "parametros": {
-                "delta_preco_pct": delta_preco_pct,
-                "delta_promo_pp": delta_promo_pp,
-                "comp_dist": comp_dist,
-                "comp_promo": comp_promo,
-                "feriados": bool(feriados),
-                "eventos": eventos if eventos else "none"
-            }
-        }
-        
-        # Garante que o diretório existe
-        os.makedirs("cenarios", exist_ok=True)
-        
-        # Gera nome do arquivo
-        nome_arquivo = f"cenarios/cenario_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        
-        try:
-            # Salva o cenário
-            with open(nome_arquivo, 'w', encoding='utf-8') as f:
-                json.dump(dados_cenario, f, ensure_ascii=False, indent=4)
-                
-            return True, f"Cenário '{nome_cenario}' salvo com sucesso!", "Sucesso", ""
-        except Exception as e:
-            return True, f"Erro ao salvar cenário: {str(e)}", "Erro", nome_cenario
-
-    # Callback para exibir a confirmação de limpeza de cenários
-    @aplicativo.callback(
-        Output('confirm-limpar-cenarios', 'displayed'),
-        Input('btn-limpar-cenarios', 'n_clicks'),
-        prevent_initial_call=True
-    )
-    def exibir_confirmacao_limpeza(n_clicks):
-        if n_clicks:
-            return True
-        return False
-
-    # Callback para efetivamente limpar os cenários
-    @aplicativo.callback(
-        [Output('store-cenarios-update-trigger', 'data'),
-         Output('toast-feedback-cenario', 'is_open', allow_duplicate=True),
-         Output('toast-feedback-cenario', 'children', allow_duplicate=True),
-         Output('toast-feedback-cenario', 'header', allow_duplicate=True)],
-        Input('confirm-limpar-cenarios', 'submit_n_clicks'),
-        prevent_initial_call=True
-    )
-    def limpar_todos_cenarios(submit_n_clicks):
-        if not submit_n_clicks:
-            return no_update, no_update, no_update, no_update
-        
-        try:
-            arquivos = glob.glob('cenarios/*.json')
-            for arquivo in arquivos:
-                os.remove(arquivo)
-            
-            return datetime.now().isoformat(), True, "Todos os cenários foram apagados.", "Sucesso"
-        except Exception as e:
-            return no_update, True, f"Erro ao apagar cenários: {str(e)}", "Erro"
-
-    # Callback para atualizar a lista de cenários disponíveis
-    @aplicativo.callback(
-        Output('dropdown-cenarios', 'options'),
-        [
-            Input('btn-confirmar-salvar-cenario', 'n_clicks'),
-            Input('store-cenarios-update-trigger', 'data'), # Alterado
-            Input('dropdown-cenarios', 'id')  # Para carga inicial
-        ]
-    )
-    def atualizar_lista_cenarios(n_clicks_salvar, update_trigger, _):
-        import glob
-        import json
-        from datetime import datetime
-        
-        # Lista todos os arquivos de cenário
-        arquivos = glob.glob('cenarios/*.json')
-        opcoes = []
-        
-        for arquivo in arquivos:
-            try:
-                with open(arquivo, 'r') as f:
-                    dados = json.load(f)
-                    # Formata o nome do cenário com data e descrição
-                    data = datetime.strptime(dados.get('data_criacao', ''), '%Y%m%d_%H%M%S')
-                    nome = f"{data.strftime('%d/%m/%Y %H:%M')} - {dados.get('descricao', 'Sem descrição')}"
-                    opcoes.append({
-                        'label': nome,
-                        'value': arquivo
-                    })
-            except:
-                continue
-                
-        # Ordena por data (mais recente primeiro)
-        opcoes.sort(key=lambda x: x['label'], reverse=True)
-        return opcoes
-
-    # Callback para comparar cenários
-    @aplicativo.callback(
-        Output('resultados-comparacao', 'children'),
-        Output('resultados-comparacao', 'style'),
-        Input('btn-comparar-cenarios', 'n_clicks'),
-        State('dropdown-cenarios', 'value'),
-        State('grafico-previsao', 'figure'),
-        prevent_initial_call=True
-    )
-    def comparar_cenarios(n_clicks, cenarios_selecionados, fig_previsao):
-        import json
-        import pandas as pd
-        import plotly.graph_objects as go
-        from dash import dash_table
-        
-        if not n_clicks or not cenarios_selecionados or len(cenarios_selecionados) == 0:
-            return "", {"display": "none"}
-            
-        # Se não houver dados de previsão base, retorna erro
-        if not fig_previsao or 'data' not in fig_previsao or len(fig_previsao['data']) < 2:
-            return html.Div([
-                html.I(className="fas fa-exclamation-circle text-danger me-2"),
-                "Gere a previsão base primeiro"
-            ], className="alert alert-danger"), {"display": "block"}
-            
-        # Dados base
-        fc_x = pd.to_datetime(fig_previsao['data'][1]['x'])
-        fc_y = np.array(fig_previsao['data'][1]['y'], dtype=float)
-        total_base = fc_y.sum()
-        
-        # Carrega dados dos cenários
-        dados_cenarios = []
-        for arquivo in cenarios_selecionados:
-            try:
-                with open(arquivo, 'r') as f:
-                    cenario = json.load(f)
-                    dados_cenarios.append(cenario)
-            except:
-                continue
-                
-        if not dados_cenarios:
-            return html.Div([
-                html.I(className="fas fa-exclamation-circle text-warning me-2"),
-                "Nenhum cenário válido selecionado"
-            ], className="alert alert-warning"), {"display": "block"}
-            
-        # Cria gráfico comparativo
-        fig_comp = go.Figure()
-        
-        # Adiciona linha base
-        fig_comp.add_trace(go.Scatter(
-            x=fc_x, 
-            y=fc_y, 
-            name='Base',
-            mode='lines',
-            line=dict(color='#1f77b4')
-        ))
-        
-        # Cores para os cenários
-        cores = ['#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
-        
-        # Dados para a tabela comparativa
-        dados_tabela = [{
-            'cenario': 'Base',
-            'total_vendas': f"€ {total_base:,.0f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
-            'variacao': '0%'
-        }]
-        
-        # Adiciona cada cenário
-        for i, cenario in enumerate(dados_cenarios):
-            # Recalcula o ajuste usando os parâmetros salvos
-            params = cenario['parametros']
-            
-            # Fatores de ajuste por variável
-            fator_preco = 1 + (ELASTIC_PRICE * (params['delta_preco_pct'] / 100))
-            fator_promo = 1 + (ELASTIC_PROMO * (params['delta_promo_pp'] / 100))
-            fator_comp_dist = 1 + (ELASTIC_COMP_DIST * ((params['comp_dist'] - 5) / 10))
-            fator_comp_promo = 1 + (ELASTIC_COMP_PROMO * (params['comp_promo'] / 100))
-            
-            # Ajuste por eventos especiais
-            fator_eventos = {
-                "none": 1.0,
-                "back_to_school": 1.15,
-                "christmas": 1.3,
-                "easter": 1.2
-            }.get(params.get('eventos', 'none'), 1.0)
-            
-            # Ajuste por feriados
-            fator_feriados = 1.1 if params.get('feriados', False) else 1.0
-            
-            # Ajuste final
-            ajuste = (fator_preco * fator_promo * fator_comp_dist * 
-                     fator_comp_promo * fator_eventos * fator_feriados)
-            
-            y_sim = fc_y * ajuste
-            total_sim = y_sim.sum()
-            var_pct = ((total_sim / total_base) - 1) * 100
-            
-            # Adiciona ao gráfico
-            cor = cores[i % len(cores)]
-            fig_comp.add_trace(go.Scatter(
-                x=fc_x,
-                y=y_sim,
-                name=cenario['descricao'],
-                mode='lines',
-                line=dict(color=cor)
-            ))
-            
-            # Adiciona à tabela
-            dados_tabela.append({
-                'cenario': cenario['descricao'],
-                'total_vendas': f"€ {total_sim:,.0f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
-                'variacao': f"{var_pct:+.1f}%"
-            })
-            
-        # Atualiza layout do gráfico
-        fig_comp.update_layout(
-            template='plotly_white',
-            xaxis_title='Data',
-            yaxis_title='Vendas Previstas',
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            height=400
-        )
-        
-        # Cria tabela comparativa
-        tabela = dash_table.DataTable(
-            data=dados_tabela,
-            columns=[
-                {'name': 'Cenário', 'id': 'cenario'},
-                {'name': 'Total de Vendas', 'id': 'total_vendas'},
-                {'name': 'Variação', 'id': 'variacao'}
-            ],
-            style_table={'overflowX': 'auto'},
-            style_cell={
-                'textAlign': 'left',
-                'padding': '10px',
-                'whiteSpace': 'normal'
-            },
-            style_header={
-                'backgroundColor': 'rgb(230, 230, 230)',
-                'fontWeight': 'bold'
-            },
-            style_data_conditional=[
-                {
-                    'if': {'column_id': 'variacao', 'filter_query': '{variacao} contains "+"'},
-                    'color': 'green'
-                },
-                {
-                    'if': {'column_id': 'variacao', 'filter_query': '{variacao} contains "-"'},
-                    'color': 'red'
-                }
-            ]
-        )
-        
-        return html.Div([
-            dcc.Graph(figure=fig_comp, className="mb-4"),
-            html.H6("Comparativo de Resultados", className="mb-3"),
-            tabela
-        ]), {"display": "block"}
 
     # ==================================================================
     # GRÁFICO COMPARATIVO DE MÉTRICAS PREVISTAS (Sales / Customers / Ticket)
@@ -1099,7 +626,6 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
         ]
     )
     def gerar_comparativo_metricas(horizonte, granularidade, modelo, tipo_loja, lojas, promocao, dias_semana, store_data):
-        from prophet import Prophet
         df = deserializar_df(store_data)
         if df is None or df.empty:
             return go.Figure()
@@ -1152,16 +678,16 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
         Output('grafico-media-tipo-loja', 'figure'),
         Input('grafico-previsao', 'figure'),
         Input('radio-metrica-previsao', 'value'),
-        Input('armazenamento-df-principal', 'data')
+        Input('armazenamento-df-principal', 'data'),
+        Input('armazenamento-forecast-diario', 'data'),
+        Input('armazenamento-hist-diario', 'data')
     )
-    def gerar_graficos_adicionais(fig_previsao, metrica_selecionada, store_data):
-        """Cria dois gráficos auxiliares, evitando barras:
-        1) Linha acumulada semanal previstos × histórico × meta.
+    def gerar_graficos_adicionais(fig_previsao, metrica_selecionada, store_data, forecast_diario_json, hist_diario_json):
+        """Cria dois gráficos auxiliares:
+        1) Média da métrica selecionada por semana (histórico e previsão em um gráfico contínuo)
         2) Heatmap de vendas previstas por Semana × Tipo de Loja.
         """
-        import pandas as pd
-        import numpy as np
-        from plotly.subplots import make_subplots
+        # importações duplicadas removidas (já declaradas no topo)
         if not fig_previsao or 'data' not in fig_previsao or len(fig_previsao['data']) < 2:
             placeholder = go.Figure()
             placeholder.update_layout(template='plotly_white', xaxis_visible=False, yaxis_visible=False,
@@ -1172,61 +698,164 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
         dates_fc = pd.to_datetime(fig_previsao['data'][1]['x'])
         values_fc = np.array(fig_previsao['data'][1]['y'], dtype=float)
         df_fc = pd.DataFrame({'Date': dates_fc, 'Valor': values_fc})
-        df_fc['Week'] = df_fc['Date'].dt.isocalendar().week
-        df_fc['Year'] = df_fc['Date'].dt.year
-
-        # --- Carregar histórico ---
+        
+        # --- Carregar histórico e previsão diária ---
         df_hist_full = deserializar_df(store_data)
-        if df_hist_full is None or df_hist_full.empty:
+        
+        # Se temos os dados diários completos, vamos usá-los
+        has_daily_data = hist_diario_json is not None and forecast_diario_json is not None
+        
+        if has_daily_data:
+            try:
+                # Carrega dados históricos e de previsão DIÁRIOS
+                df_hist_daily = pd.read_json(StringIO(hist_diario_json), orient='split')
+                df_fc_daily = pd.read_json(StringIO(forecast_diario_json), orient='split')
+
+                # Garante que as colunas de data sejam do tipo datetime
+                df_hist_daily['ds'] = pd.to_datetime(df_hist_daily['ds'])
+                df_fc_daily['ds'] = pd.to_datetime(df_fc_daily['ds'])
+                
+                # Renomeia colunas para padronização
+                df_hist_daily = df_hist_daily.rename(columns={'ds': 'Date', 'y': 'Valor'})
+                df_fc_daily = df_fc_daily.rename(columns={'ds': 'Date', 'yhat': 'Valor'})
+                
+                # Marca origem dos dados
+                df_hist_daily['Origem'] = 'Histórico'
+                df_fc_daily['Origem'] = 'Previsão'
+                
+                # Combina histórico e previsão
+                df_combined = pd.concat([df_hist_daily, df_fc_daily], ignore_index=True)
+            except Exception as e:
+                logger.error(f"Erro ao processar dados diários: {e}")
+                has_daily_data = False
+        
+        if not has_daily_data or df_hist_full is None or df_hist_full.empty:
             df_hist_full = pd.DataFrame(columns=['Date','Sales','Customers'])
-        # define coluna a usar
+            df_combined = pd.DataFrame(columns=['Date','Valor','Origem'])
+        
+        # Define coluna a usar e nome da métrica
         if metrica_selecionada == 'Sales':
             col_hist = 'Sales'
+            metrica_nome = 'Vendas'
         elif metrica_selecionada == 'Customers':
             col_hist = 'Customers'
+            metrica_nome = 'Clientes'
         else:  # Ticket
             df_hist_full['TicketMedio'] = (df_hist_full['Sales'] / df_hist_full['Customers'].replace(0, np.nan)).fillna(0)
             col_hist = 'TicketMedio'
+            metrica_nome = 'Ticket Médio'
 
-        # Histórico referente ao mesmo número de semanas, ano anterior
-        last_hist_date = df_hist_full['Date'].max() if not df_hist_full.empty else None
-        df_hist = pd.DataFrame()
-        if last_hist_date is not None:
-            one_year = pd.DateOffset(years=1)
-            past_start = dates_fc.min() - one_year
-            past_end = dates_fc.max() - one_year
-            df_hist = df_hist_full[(df_hist_full['Date']>=past_start)&(df_hist_full['Date']<=past_end)].copy()
-            df_hist['ValorHist'] = df_hist[col_hist]
-            df_hist['Week'] = df_hist['Date'].dt.isocalendar().week
-            df_hist_group = df_hist.groupby('Week')['ValorHist'].mean().reset_index()
+        # --- Preparar dados para gráfico de média semanal ---
+        if has_daily_data and not df_combined.empty:
+            # Adicionar semana e ano
+            df_combined['Week'] = df_combined['Date'].dt.isocalendar().week
+            df_combined['Year'] = df_combined['Date'].dt.year
+            
+            # Calcular médias semanais
+            weekly_data = df_combined.groupby(['Year', 'Week', 'Origem'])['Valor'].mean().reset_index()
+            
+            # Criar índice de data para ordenação correta (primeiro dia da semana)
+            weekly_data['WeekStart'] = weekly_data.apply(
+                lambda row: pd.Timestamp(f"{row['Year']}-01-01") + 
+                           pd.DateOffset(weeks=int(row['Week'])-1),
+                axis=1
+            )
+            
+            # Separar histórico e previsão
+            hist_weekly = weekly_data[weekly_data['Origem'] == 'Histórico']
+            fc_weekly = weekly_data[weekly_data['Origem'] == 'Previsão']
         else:
-            df_hist_group = pd.DataFrame({'Week':[], 'ValorHist':[]})
+            # Criar DataFrames vazios para evitar erros
+            hist_weekly = pd.DataFrame(columns=['WeekStart', 'Valor'])
+            fc_weekly = pd.DataFrame(columns=['WeekStart', 'Valor'])
 
-        # --- META ---
-        # Meta simples = média histórica +5% (exemplo). Caso não haja histórico, meta = previsão *0.95
-        if not df_hist_group.empty:
-            meta_series = df_hist_group.copy()
-            meta_series['Meta'] = meta_series['ValorHist']*1.05
-        else:
-            meta_series = df_fc.groupby('Week')['Valor'].mean().reset_index()
-            meta_series['Meta'] = meta_series['Valor']*0.95
-
-        # --- Acumulados ---
-        acum_prev = df_fc.groupby('Week')['Valor'].mean().cumsum()
-        acum_meta = meta_series['Meta'].cumsum()
-        acum_hist = df_hist_group['ValorHist'].cumsum() if not df_hist_group.empty else None
-
+        # Criar figura para média semanal
         fig_global = go.Figure()
-        fig_global.add_trace(go.Scatter(x=acum_prev.index, y=acum_prev.values,
-                                         mode='lines', name='Previsto', line=dict(color='#1f77b4', width=3)))
-        fig_global.add_trace(go.Scatter(x=acum_meta.index, y=acum_meta.values,
-                                         mode='lines', name='Meta', line=dict(color='#ff7f0e', dash='dash')))
-        if acum_hist is not None:
-            fig_global.add_trace(go.Scatter(x=acum_hist.index, y=acum_hist.values,
-                                             mode='lines', name='Ano Anterior', line=dict(color='#2ca02c', dash='dot')))
-        fig_global.update_layout(template='plotly_white', xaxis_title='Semana',
-                                yaxis_title=f'Acumulado de {metrica_selecionada}',
-                                legend_title='', height=300, margin=dict(l=40,r=40,t=30,b=40))
+        
+        # Adicionar linha de histórico
+        if not hist_weekly.empty:
+            # Ordenar por data para garantir a continuidade da linha
+            hist_weekly = hist_weekly.sort_values('WeekStart')
+            
+            # Aplicar suavização usando média móvel
+            if len(hist_weekly) > 5:
+                hist_weekly['Valor_Suavizado'] = hist_weekly['Valor'].rolling(window=3, center=True).mean().fillna(hist_weekly['Valor'])
+            else:
+                hist_weekly['Valor_Suavizado'] = hist_weekly['Valor']
+                
+            fig_global.add_trace(go.Scatter(
+                x=hist_weekly['WeekStart'], 
+                y=hist_weekly['Valor_Suavizado'],
+                mode='lines', 
+                name='Histórico', 
+                line=dict(color='#1f77b4', width=2.5, shape='spline', smoothing=1.3)
+            ))
+        
+        # Adicionar linha de previsão
+        if not fc_weekly.empty:
+            # Ordenar por data para garantir a continuidade da linha
+            fc_weekly = fc_weekly.sort_values('WeekStart')
+            
+            # Aplicar suavização usando média móvel
+            if len(fc_weekly) > 5:
+                fc_weekly['Valor_Suavizado'] = fc_weekly['Valor'].rolling(window=3, center=True).mean().fillna(fc_weekly['Valor'])
+            else:
+                fc_weekly['Valor_Suavizado'] = fc_weekly['Valor']
+                
+            fig_global.add_trace(go.Scatter(
+                x=fc_weekly['WeekStart'], 
+                y=fc_weekly['Valor_Suavizado'],
+                mode='lines', 
+                name='Previsão', 
+                line=dict(color='#ff7f0e', width=3, shape='spline', smoothing=1.3)
+            ))
+            
+            # Adicionar área sombreada entre as curvas se ambas existirem
+            if not hist_weekly.empty:
+                # Encontrar o ponto de junção entre histórico e previsão
+                junction_date = fc_weekly['WeekStart'].min()
+                
+                # Obter o último ponto do histórico próximo à junção
+                last_hist_point = hist_weekly[hist_weekly['WeekStart'] <= junction_date]
+                if not last_hist_point.empty:
+                    last_hist_point = last_hist_point.iloc[-1]
+                    
+                    # Obter o primeiro ponto da previsão
+                    first_fc_point = fc_weekly[fc_weekly['WeekStart'] >= junction_date]
+                    if not first_fc_point.empty:
+                        first_fc_point = first_fc_point.iloc[0]
+                        
+                        # Adicionar um ponto de conexão suave
+                        connection_x = [last_hist_point['WeekStart'], first_fc_point['WeekStart']]
+                        connection_y = [last_hist_point['Valor_Suavizado'], first_fc_point['Valor_Suavizado']]
+                        
+                        fig_global.add_trace(go.Scatter(
+                            x=connection_x,
+                            y=connection_y,
+                            mode='lines',
+                            line=dict(color='#9467bd', width=2, dash='dot'),
+                            name='Conexão',
+                            showlegend=False
+                        ))
+        
+        # Configurar layout
+        fig_global.update_layout(
+            template='plotly_white', 
+            xaxis_title='Data',
+            yaxis_title=f'Média Semanal de {metrica_nome}',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            height=300, 
+            margin=dict(l=40, r=40, t=30, b=40),
+            hovermode='x unified',
+            xaxis_rangeslider=dict(visible=True, thickness=0.05)
+        )
+        
+        # Definir intervalo de visualização para mostrar parte do histórico e toda a previsão
+        if not hist_weekly.empty and not fc_weekly.empty:
+            # Mostrar os últimos 3 meses de histórico e toda a previsão
+            data_inicio_visual = fc_weekly['WeekStart'].min() - pd.DateOffset(months=3)
+            data_fim_visual = fc_weekly['WeekStart'].max()
+            fig_global.update_xaxes(range=[data_inicio_visual, data_fim_visual])
 
         # --- Heatmap Semana × Tipo de Loja ---
         # Obter StoreType por Store
@@ -1256,6 +885,10 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
             df_fc_tipos = pd.concat(rows, ignore_index=True)
             df_fc = df_fc_tipos
 
+        # Adicionar semana e ano para o heatmap
+        df_fc['Week'] = df_fc['Date'].dt.isocalendar().week
+        df_fc['Year'] = df_fc['Date'].dt.year
+        
         heat = df_fc.groupby(['StoreType','Week'])['Valor'].mean().reset_index()
         pivot = heat.pivot(index='StoreType', columns='Week', values='Valor')
         pivot = pivot.sort_index()

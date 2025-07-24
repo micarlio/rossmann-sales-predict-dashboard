@@ -14,9 +14,6 @@ def criar_layout_dashboard_analise(dados):
         html.Div([
             html.H1("Visão Geral e Análise de Vendas", className="page-title"), # Título atualizado
             html.Div([
-                html.Button([html.I(className="fas fa-download me-2"), "Exportar Parquet"], id='dashboard-botao-baixar-dados-filtrados', className='btn btn-primary-custom'),
-                dcc.Download(id="download-df-parquet"),
-                html.Button(html.I(className="fas fa-sync-alt"), id='dashboard-botao-resetar-filtros', className='btn btn-outline-secondary ms-2', title='Resetar Filtros'),
                 html.Button(html.I(className="fas fa-expand-alt"), id={'type': 'botao-tela-cheia', 'index': nome_pagina}, className='btn btn-outline-secondary ms-2', title='Tela Cheia'),
                 dcc.Store(id={'type': 'saida-tela-cheia', 'index': nome_pagina})
             ], className="d-flex align-items-center"),

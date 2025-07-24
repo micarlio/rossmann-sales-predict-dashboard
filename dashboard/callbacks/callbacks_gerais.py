@@ -139,62 +139,7 @@ def registrar_callbacks_gerais(aplicativo, dados):
         opcoes = [{'label': str(s), 'value': s} for s in sorted(lojas_filtradas)]
         return opcoes, [] # Limpa a seleção atual ao mudar os tipos de loja
 
-    # --- Callback para Resetar Filtros ---
-    @aplicativo.callback(
-        [
-            Output('dashboard-filtro-data', 'start_date'),
-            Output('dashboard-filtro-data', 'end_date'),
-            Output('dashboard-filtro-tipo-loja', 'value'),
-            Output('dashboard-filtro-loja-especifica', 'value'),
-            Output('filtro-granularidade', 'value'), # Permanece sem prefixo, controle de granularidade
-            Output('dashboard-filtro-metrica-temporal', 'value'),
-            Output('dashboard-filtro-feriado-estadual', 'value'),
-            Output('dashboard-filtro-feriado-escolar', 'value'),
-            # Adicionado para resetar os seletores de métrica dos gráficos de comportamento
-            Output('seletor-metrica-comportamento-promocao', 'value'),
-            Output('seletor-metrica-sortimento', 'value')
-        ],
-        Input('dashboard-botao-resetar-filtros', 'n_clicks'),
-        prevent_initial_call=True
-    )
-    def resetar_filtros(n_clicks):
-        if n_clicks:
-            return (
-                df_principal['Date'].min().date(),
-                df_principal['Date'].max().date(),
-                sorted(df_principal['StoreType'].unique()),
-                [], # Resetar seleção de lojas específicas
-                'M', # Permanece sem prefixo
-                'Sales', # Valor padrão para métrica temporal
-                'all', # Valor padrão para feriado estadual
-                'all', # Valor padrão para feriado escolar
-                'SalesPerCustomer', # Valor padrão para comportamento de promoção
-                'SalesPerCustomer'  # Valor padrão para comportamento de sortimento
-            )
-        return dash.no_update
-
-    # --- Callback para Download dos Dados Filtrados ---
-    @aplicativo.callback(
-        Output("download-df-parquet", "data"),
-        Input("dashboard-botao-baixar-dados-filtrados", "n_clicks"),
-        [
-            dash.State('dashboard-filtro-data', 'start_date'),
-            dash.State('dashboard-filtro-data', 'end_date'),
-            dash.State('dashboard-filtro-tipo-loja', 'value'),
-            dash.State('dashboard-filtro-loja-especifica', 'value'),
-            dash.State('dashboard-filtro-feriado-estadual', 'value'),
-            dash.State('dashboard-filtro-feriado-escolar', 'value')
-        ],
-        prevent_initial_call=True,
-    )
-    def baixar_dados_filtrados(n_clicks, data_inicio, data_fim, tipos_loja_selecionados, lojas_especificas_selecionadas, feriado_estadual_selecionado, feriado_escolar_selecionado):
-        if n_clicks:
-            df_download = filtrar_dataframe(df_principal, data_inicio, data_fim, tipos_loja_selecionados, lojas_especificas_selecionadas, feriado_estadual_selecionado, feriado_escolar_selecionado)
-            return dcc.send_bytes(
-                lambda buf: df_download.to_parquet(buf, index=False),
-                f"rossmann_dados_filtrados_{data_inicio}_a_{data_fim}.parquet"
-            )
-        return dash.no_update
+    
 
     @aplicativo.callback(
         Output('saida-descricao-coluna', 'children'),

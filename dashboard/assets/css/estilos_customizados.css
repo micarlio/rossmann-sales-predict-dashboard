@@ -289,8 +289,8 @@ body {
 }
 
 .radio-input-custom:checked + .radio-item-custom::before {
-    background-color: var(--azul-destaque); /* Refatorar variável */
-    border-color: var(--azul-destaque); /* Refatorar variável */
+    background-color: var(--vermelho-rossmann);
+    border-color: var(--vermelho-rossmann);
 }
 
 .radio-item-custom::after {

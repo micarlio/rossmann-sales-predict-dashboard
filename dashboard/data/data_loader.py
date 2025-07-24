@@ -12,7 +12,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('dashboard_data_loader.log')
+        logging.FileHandler('log-depuracao/dashboard_data_loader.log')
     ]
 )
 
