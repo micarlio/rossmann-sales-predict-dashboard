@@ -114,5 +114,19 @@ def filtrar_dataframe_para_3d(
         feriado_escolar=feriado_escolar,
     )
 
-# Restante do código (filtrar_dataframe, etc.) mantém-se idêntico — copiado do arquivo anterior
-# ... existing code ... 
+import numpy as np
+import numbers
+
+def extrair_valores_y(y_fc):
+    # Caso normal: lista de números
+    if isinstance(y_fc, (list, np.ndarray)) and all(isinstance(v, (int, float, np.integer, np.floating, type(None), numbers.Number)) for v in y_fc):
+        return np.array(y_fc, dtype=float)
+    # Caso especial: dicionário serializado pelo Plotly
+    if isinstance(y_fc, dict) and '_inputArray' in y_fc:
+        arr = y_fc['_inputArray']
+        if isinstance(arr, dict):
+            # Ordena pelas chaves numéricas
+            chaves = [str(i) for i in range(len(arr)) if str(i) in arr]
+            return np.array([arr[k] for k in chaves], dtype=float)
+    # Caso não reconhecido
+    return None 

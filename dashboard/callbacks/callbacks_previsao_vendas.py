@@ -20,8 +20,9 @@ import json
 from datetime import datetime
 import glob
 from plotly.subplots import make_subplots
+import numbers
 
-from ..core.utils import criar_figura_vazia, parse_json_to_df, criar_icone_informacao
+from ..core.utils import criar_figura_vazia, parse_json_to_df, criar_icone_informacao, extrair_valores_y
 from ..core.forecast_utils import train_and_forecast
 
 # Cache para modelos treinados
@@ -495,6 +496,9 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
     def atualizar_informacoes_previsao(fig, metrica_selecionada, forecast_diario_json, hist_diario_json): 
         if not fig or 'data' not in fig or not forecast_diario_json or not hist_diario_json:
             return [html.Div("Sem dados de previsão para exibir.")]
+        # Checagem para evitar erro de tipo
+        if isinstance(hist_diario_json, dict) or isinstance(forecast_diario_json, dict):
+            return [html.Div("Erro: Dados de previsão em formato incorreto (dict). Consulte o log e recarregue a página.")]
         try:
             # Carrega dados históricos e de previsão DIÁRIOS
             df_hist_daily = pd.read_json(StringIO(hist_diario_json), orient='split')
@@ -539,9 +543,13 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
             
             # Intervalo de confiança (ainda do gráfico, pois é para exibição)
             if len(fig['data']) >= 4:
-                lower = np.array(fig['data'][2]['y'], dtype=float)
-                upper = np.array(fig['data'][3]['y'], dtype=float)
-                amp_ic = np.mean(upper - lower)
+                lower = extrair_valores_y(fig['data'][2]['y'])
+                upper = extrair_valores_y(fig['data'][3]['y'])
+                if lower is None or upper is None:
+                    logger.error(f"Erro ao extrair valores para IC. Lower: {fig['data'][2]['y']} | Upper: {fig['data'][3]['y']}")
+                    amp_ic = np.nan # Ou um valor padrão que não cause erro
+                else:
+                    amp_ic = np.mean(upper - lower)
             else:
                 amp_ic = np.nan
                 
@@ -696,7 +704,15 @@ def registrar_callbacks_previsao_vendas(aplicativo, dados):
 
         # --- Dados da previsão principal ---
         dates_fc = pd.to_datetime(fig_previsao['data'][1]['x'])
-        values_fc = np.array(fig_previsao['data'][1]['y'], dtype=float)
+        y_fc = fig_previsao['data'][1]['y']
+        
+        values_fc = extrair_valores_y(y_fc)
+        if values_fc is None:
+            logger.error(f"Erro: Não foi possível extrair valores numéricos de y_fc: {y_fc}")
+            placeholder = go.Figure()
+            placeholder.update_layout(template='plotly_white', xaxis_visible=False, yaxis_visible=False,
+                                      annotations=[dict(text='Erro nos dados de previsão: formato não suportado.', showarrow=False)])
+            return placeholder, placeholder
         df_fc = pd.DataFrame({'Date': dates_fc, 'Valor': values_fc})
         
         # --- Carregar histórico e previsão diária ---
