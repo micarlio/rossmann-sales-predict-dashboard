@@ -1,4 +1,4 @@
-# 📊 Análise Aprofundada e Dashboard Interativo para Previsão de Vendas da Rossmann
+# Análise e Dashboard Interativo para Previsão de Vendas da Rossmann
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.8%2B-blue" alt="Python Version">
@@ -92,7 +92,6 @@ A criação de novas features é um passo fundamental para extrair mais informa�
 
 O produto final do projeto é um dashboard web completo, que vai além de uma simples visualização de dados. Ele foi concebido como uma ferramenta de **Business Intelligence (BI)** e **suporte à decisão**, permitindo que usuários, desde gerentes de loja a analistas de negócio, explorem os dados históricos e consumam as previsões do modelo de forma intuitiva.
 
-> *(Sugestão: Insira aqui um GIF ou uma imagem do seu dashboard em ação)*  
 > ![Demonstração do Dashboard](dashboard/assets/mim/dashboard.gif)
 
 ### 4.1. Arquitetura e Tecnologias
@@ -149,6 +148,7 @@ O dashboard é organizado em uma navegação lateral que dá acesso a diferentes
 
 A organização do projeto foi pensada para garantir modularidade, escalabilidade e facilidade de manutenção.
 
+```
 /
 ├── dashboard/                # Contém toda a aplicação web Dash.
 │   ├── app.py                # Ponto de entrada da aplicação, define o servidor e o layout principal.
@@ -167,3 +167,4 @@ A organização do projeto foi pensada para garantir modularidade, escalabilidad
 ├── requirements.txt          # Dependências Python do projeto.
 ├── setup.py                  # Script de configuração para distribuição do projeto.
 └── README.md                 # Documentação do projeto.
+```
