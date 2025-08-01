@@ -222,9 +222,9 @@ def criar_layout_contextualizacao(dados):
                                 'marginBottom': '15px'
                             }),
                             html.P([
-                                "Dashboard analítico desenvolvido para identificar padrões e ",
-                                html.Strong("prever vendas futuras"), 
-                                " nas lojas da rede Rossmann, proporcionando insights estratégicos para a tomada de decisões."
+                                "Este dashboard oferece uma análise detalhada sobre as vendas da Rossmann, uma das maiores redes de drogarias da Europa. O objetivo é ",
+                                html.Strong("explorar dados históricos de vendas para identificar padrões, avaliar o impacto de promoções e prever futuras demandas. "),
+                                "A análise abrange um período de três anos, de 2013 a 2015, e inclui dados de mais de mil lojas, totalizando milhões de registros. Utilize as abas para navegar entre a análise geral, visualizações por loja e previsões de vendas."
                             ], style={
                                 'fontSize': '1.1rem',
                                 'lineHeight': '1.6',
@@ -241,147 +241,16 @@ def criar_layout_contextualizacao(dados):
                                 dbc.Button([
                                     html.I(className="fas fa-store me-2"),
                                     "Análise por Loja"
-                                ], color="primary", outline=True, href="/analise-lojas", size="lg"),
-                                
-                                html.Button(html.I(className="fas fa-expand-alt"), 
-                                           id={'type': 'botao-tela-cheia', 'index': 'contextualizacao'}, 
-                                           className='btn btn-outline-secondary ms-2', 
-                                           title='Tela Cheia',
-                                           style={'marginLeft': '10px'})
+                                ], color="primary", outline=True, href="/analise-lojas", size="lg", className="me-2"),
+
+                                dbc.Button([
+                                    html.I(className="fas fa-bullseye me-2"),
+                                    "Previsão de Vendas"
+                                ], color="success", outline=True, href="/previsao-vendas", size="lg"),
+
                             ], className="d-flex align-items-center"),
-                            
-                            dcc.Store(id={'type': 'saida-tela-cheia', 'index': 'contextualizacao'})
                         ])
-                    ], xs=12, sm=12, md=7, lg=8),
-                    
-                    dbc.Col([
-                        html.Div([
-                            dbc.Row([
-                                dbc.Col([
-                                    html.Div([
-                                        html.Div([
-                                            html.I(className="fas fa-calendar", style={
-                                                'fontSize': '28px',
-                                                'color': VERMELHO_ROSSMANN,
-                                                'backgroundColor': 'rgba(220, 53, 69, 0.1)',
-                                                'padding': '15px',
-                                                'borderRadius': '12px',
-                                                'marginBottom': '10px',
-                                                'width': '60px',
-                                                'height': '60px',
-                                                'display': 'flex',
-                                                'alignItems': 'center',
-                                                'justifyContent': 'center'
-                                            })
-                                        ], style={'textAlign': 'center'}),
-                                        html.P("Período de Análise", style={
-                                            'fontSize': '1rem',
-                                            'color': CINZA_NEUTRO,
-                                            'marginBottom': '5px',
-                                            'textAlign': 'center'
-                                        }),
-                                        html.H4(f"{periodo_inicio} - {periodo_fim}", style={
-                                            'fontWeight': '700',
-                                            'color': AZUL_ESCURO,
-                                            'marginBottom': '0',
-                                            'textAlign': 'center',
-                                            'fontSize': '1.1rem'
-                                        })
-                                    ], style={
-                                        'backgroundColor': BRANCO_NEUTRO,
-                                        'borderRadius': '15px',
-                                        'padding': '20px',
-                                        'height': '100%',
-                                        'boxShadow': '0 4px 6px rgba(0,0,0,0.1)'
-                                    })
-                                ], xs=12, className="mb-3"),
-                                
-                                dbc.Col([
-                                    html.Div([
-                                        html.Div([
-                                            html.I(className="fas fa-store", style={
-                                                'fontSize': '28px',
-                                                'color': AZUL_DESTAQUE,
-                                                'backgroundColor': 'rgba(0, 123, 255, 0.1)',
-                                                'padding': '15px',
-                                                'borderRadius': '12px',
-                                                'marginBottom': '10px',
-                                                'width': '60px',
-                                                'height': '60px',
-                                                'display': 'flex',
-                                                'alignItems': 'center',
-                                                'justifyContent': 'center'
-                                            })
-                                        ], style={'textAlign': 'center'}),
-                                        html.P("Total de Lojas", style={
-                                            'fontSize': '1rem',
-                                            'color': CINZA_NEUTRO,
-                                            'marginBottom': '5px',
-                                            'textAlign': 'center'
-                                        }),
-                                        html.H4(f"{total_lojas:,}", style={
-                                            'fontWeight': '700',
-                                            'color': AZUL_ESCURO,
-                                            'marginBottom': '0',
-                                            'textAlign': 'center',
-                                            'fontSize': '1.4rem'
-                                        })
-                                    ], style={
-                                        'backgroundColor': BRANCO_NEUTRO,
-                                        'borderRadius': '15px',
-                                        'padding': '20px',
-                                        'height': '100%',
-                                        'boxShadow': '0 4px 6px rgba(0,0,0,0.1)'
-                                    })
-                                ], xs=12, sm=6, className="mb-3"),
-                                
-                                dbc.Col([
-                                    html.Div([
-                                        html.Div([
-                                            html.I(className="fas fa-database", style={
-                                                'fontSize': '28px',
-                                                'color': VERDE_DESTAQUE,
-                                                'backgroundColor': 'rgba(40, 167, 69, 0.1)',
-                                                'padding': '15px',
-                                                'borderRadius': '12px',
-                                                'marginBottom': '10px',
-                                                'width': '60px',
-                                                'height': '60px',
-                                                'display': 'flex',
-                                                'alignItems': 'center',
-                                                'justifyContent': 'center'
-                                            })
-                                        ], style={'textAlign': 'center'}),
-                                        html.P("Registros", style={
-                                            'fontSize': '1rem',
-                                            'color': CINZA_NEUTRO,
-                                            'marginBottom': '5px',
-                                            'textAlign': 'center'
-                                        }),
-                                        html.H4(f"{total_registros:,}", style={
-                                            'fontWeight': '700',
-                                            'color': AZUL_ESCURO,
-                                            'marginBottom': '0',
-                                            'textAlign': 'center',
-                                            'fontSize': '1.4rem'
-                                        })
-                                    ], style={
-                                        'backgroundColor': BRANCO_NEUTRO,
-                                        'borderRadius': '15px',
-                                        'padding': '20px',
-                                        'height': '100%',
-                                        'boxShadow': '0 4px 6px rgba(0,0,0,0.1)'
-                                    })
-                                ], xs=12, sm=6, className="mb-3")
-                            ])
-                        ], style={
-                            'backgroundColor': FUNDO_CINZA_CLARO,
-                            'borderRadius': '15px',
-                            'padding': '20px',
-                            'height': '100%',
-                            'boxShadow': 'inset 0 2px 10px rgba(0,0,0,0.05)'
-                        })
-                    ], xs=12, sm=12, md=5, lg=4, className="mt-4 mt-md-0")
+                    ], xs=12, sm=12, md=12, lg=12)
                 ])
             ])
         ], style=estilo_card_principal),
@@ -442,7 +311,7 @@ def criar_layout_contextualizacao(dados):
                                 'transform': 'translateY(-5px)',
                                 'boxShadow': '0 6px 12px rgba(0,0,0,0.15)'
                             }
-                        }, className="mb-4")
+                        })
                     ], xs=12, md=6),
                     
                     dbc.Col([
@@ -495,7 +364,7 @@ def criar_layout_contextualizacao(dados):
                                 'transform': 'translateY(-5px)',
                                 'boxShadow': '0 6px 12px rgba(0,0,0,0.15)'
                             }
-                        }, className="mb-4")
+                        })
                     ], xs=12, md=6),
                     
                     dbc.Col([
@@ -548,7 +417,7 @@ def criar_layout_contextualizacao(dados):
                                 'transform': 'translateY(-5px)',
                                 'boxShadow': '0 6px 12px rgba(0,0,0,0.15)'
                             }
-                        }, className="mb-4")
+                        })
                     ], xs=12, md=6),
                     
                             dbc.Col([
@@ -601,9 +470,9 @@ def criar_layout_contextualizacao(dados):
                                 'transform': 'translateY(-5px)',
                                 'boxShadow': '0 6px 12px rgba(0,0,0,0.15)'
                             }
-                        }, className="mb-4")
+                        })
                     ], xs=12, md=6)
-                ])
+                ], className="g-4")
             ])
         ], style=estilo_card_principal),
         
@@ -993,12 +862,7 @@ def criar_layout_contextualizacao(dados):
                             html.A([
                                 html.I(className="fab fa-github me-2"),
                                 "Código-fonte"
-                            ], href="#", style={'color': AZUL_ESCURO, 'textDecoration': 'none', 'marginRight': '15px'}),
-                            
-                            html.A([
-                                html.I(className="fas fa-file-alt me-2"),
-                                "Documentação"
-                            ], href="#", style={'color': AZUL_ESCURO, 'textDecoration': 'none'})
+                            ], href="https://github.com/micarlio/rossmann-sales-predict-dashboard", target="_blank", style={'color': AZUL_ESCURO, 'textDecoration': 'none', 'marginRight': '15px'})
                         ], style={'display': 'flex', 'justifyContent': 'center', 'marginTop': '10px'})
                 ], width=12)
             ])
