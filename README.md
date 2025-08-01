@@ -37,7 +37,7 @@ Uma previsão de vendas precisa impacta diretamente:
   - `CompetitionDistance`: Média da coluna.
   - Datas de promoções e concorrência: Preenchidos com `0` como indicador de "não aplicável".
 
-### 2.3. Análise Exploratória de Dados (EDA) - Descobertas Detalhadas
+### 2.3. Análise Exploratória de Dados (EDA)
 
 A fase de EDA foi fundamental para compreender a estrutura dos dados e extrair insights que guiaram a modelagem. As principais descobertas foram:
 
@@ -59,7 +59,7 @@ A fase de EDA foi fundamental para compreender a estrutura dos dados e extrair i
 
 -   **Influência da Competição**: A variável `CompetitionDistance` mostrou uma correlação negativa fraca com `Sales` (-0.04) e `Customers` (-0.15). Isso sugere que, embora não seja um fator linear forte, lojas com competidores mais próximos tendem a ter um número ligeiramente maior de clientes, talvez por estarem localizadas em áreas de maior tráfego comercial.
 
-### 2.4. Engenharia de Features (Detalhado)
+### 2.4. Engenharia de Features
 
 A criação de novas features é um passo fundamental para extrair mais informações dos dados brutos e melhorar a performance do modelo preditivo. As seguintes features foram criadas:
 
