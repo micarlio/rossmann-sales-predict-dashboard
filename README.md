@@ -100,7 +100,7 @@ O produto final do projeto é um dashboard web completo, que vai além de uma si
 |--------------------|------------------------------|------------------------------------------------------------|
 | Framework Web      | Dash (by Plotly)             | Construção da aplicação analítica inteiramente em Python.   |
 | Visualização       | Plotly                       | Gráficos interativos de alta qualidade (zoom, pan, tooltips). |
-| Layout e Estilo    | Dash Bootstrap + CSS         | Design responsivo, moderno e profissional.                |
+| Layout e Estilo    | Dash Bootstrap + CSS         | Design responsivo.                                        |
 | Performance        | Flask-Caching                | Armazena dados processados em cache para carregamentos rápidos. |
 
 ### 4.2. Guia de Funcionalidades por Seção (Aba)
